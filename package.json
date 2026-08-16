@@ -42,7 +42,7 @@
     "electron-builder": "^26.15.3",
     "electron-vite": "^3.0.0",
     "png-to-ico": "^3.0.1",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.3",
     "typescript": "^5.8.2",
     "vite": "^6.2.2"
   },
