@@ -17,7 +17,7 @@ The current installer is unsigned, so Windows SmartScreen may warn on first run.
 
 ## Requirements
 
-- Node.js 20+ (LTS recommended) to build from source
+- Node.js 22+ (LTS recommended) to build from source
 - Windows 10/11 for packaged builds (also runs on macOS/Linux via Electron)
 
 ## Quick start
