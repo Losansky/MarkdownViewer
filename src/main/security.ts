@@ -1,0 +1,100 @@
+import { extname } from 'path'
+import type { PresentationConfig } from '../shared/types'
+
+export const MARKDOWN_EXTENSIONS = new Set(['.md', '.markdown', '.mdown', '.mkd'])
+
+/** Local files the OS may open after the user confirms. Executables and shortcuts are excluded. */
+export const OS_OPEN_EXTENSIONS = new Set([
+  '.pdf',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.webp',
+  '.bmp',
+  '.svg',
+  '.txt',
+  '.csv',
+  '.json',
+  '.mp4',
+  '.webm',
+  '.mp3',
+  '.wav',
+  '.doc',
+  '.docx',
+  '.xls',
+  '.xlsx',
+  '.ppt',
+  '.pptx'
+])
+
+const UNSAFE_MERGE_KEYS = new Set(['__proto__', 'prototype', 'constructor'])
+
+export function isUnsafeMergeKey(key: string): boolean {
+  return UNSAFE_MERGE_KEYS.has(key)
+}
+
+export function deepMerge<T extends Record<string, unknown>>(base: T, override: Partial<T>): T {
+  const result: Record<string, unknown> = { ...base }
+  for (const [key, value] of Object.entries(override)) {
+    if (value === undefined) continue
+    if (isUnsafeMergeKey(key)) continue
+    const current = result[key]
+    if (
+      value !== null &&
+      typeof value === 'object' &&
+      !Array.isArray(value) &&
+      current !== null &&
+      typeof current === 'object' &&
+      !Array.isArray(current)
+    ) {
+      result[key] = deepMerge(
+        current as Record<string, unknown>,
+        value as Record<string, unknown>
+      )
+    } else {
+      result[key] = value
+    }
+  }
+  return result as T
+}
+
+export function isMarkdownPath(filePath: string): boolean {
+  return MARKDOWN_EXTENSIONS.has(extname(filePath).toLowerCase())
+}
+
+export function isOsOpenablePath(filePath: string): boolean {
+  return OS_OPEN_EXTENSIONS.has(extname(filePath).toLowerCase())
+}
+
+export function isAllowedExternalHref(href: string): boolean {
+  return /^(https?:|mailto:|tel:)/i.test(href) || href.startsWith('//')
+}
+
+export function isDangerousHref(href: string): boolean {
+  return /^(javascript:|data:|vbscript:|about:|blob:)/i.test(href.trim())
+}
+
+export function clampPresentationConfig(
+  config: PresentationConfig,
+  options: { allowHtml: boolean }
+): PresentationConfig {
+  const markdown = {
+    ...config.markdown,
+    html: options.allowHtml ? Boolean(config.markdown?.html) : false
+  }
+
+  const mermaid = { ...config.formats.mermaid }
+  if (mermaid.securityLevel !== 'strict' && mermaid.securityLevel !== 'sandbox') {
+    mermaid.securityLevel = 'strict'
+  }
+
+  return {
+    ...config,
+    markdown,
+    formats: {
+      ...config.formats,
+      mermaid
+    }
+  }
+}

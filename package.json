@@ -1,0 +1,116 @@
+{
+  "name": "markdown-viewer",
+  "version": "1.1.2",
+  "description": "Windows Markdown document viewer with Mermaid and configurable presentation",
+  "main": "./out/main/index.js",
+  "author": "Losansky",
+  "license": "MIT",
+  "homepage": "https://github.com/Losansky/MarkdownViewer#readme",
+  "bugs": {
+    "url": "https://github.com/Losansky/MarkdownViewer/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Losansky/MarkdownViewer.git"
+  },
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "smoke": "node scripts/smoke-render.mjs",
+    "test:security": "node --experimental-strip-types scripts/security-checks.mts",
+    "sbom": "node scripts/generate-sbom.mjs",
+    "start": "electron-vite preview",
+    "icon": "node scripts/make-icon.mjs",
+    "dist": "npm run sbom && npm run build && electron-builder --win",
+    "dist:dir": "npm run sbom && npm run build && electron-builder --win --dir"
+  },
+  "dependencies": {
+    "highlight.js": "^11.11.1",
+    "katex": "^0.16.21",
+    "markdown-it": "^14.1.0",
+    "markdown-it-multimd-table": "^4.2.3",
+    "markdown-it-task-lists": "^2.1.1",
+    "mermaid": "^11.16.1"
+  },
+  "devDependencies": {
+    "@types/katex": "^0.16.7",
+    "@types/markdown-it": "^14.1.2",
+    "@types/node": "^22.13.10",
+    "electron": "^43.4.0",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^3.0.0",
+    "png-to-ico": "^3.0.1",
+    "sharp": "^0.34.5",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.2"
+  },
+  "allowScripts": {
+    "electron@43.4.0": true,
+    "esbuild@0.25.12": true
+  },
+  "build": {
+    "appId": "com.terry.markdown-viewer",
+    "productName": "MarkDown Viewer",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "config",
+        "to": "config"
+      },
+      {
+        "from": "build/icon.ico",
+        "to": "icon.ico"
+      },
+      {
+        "from": "build/sbom.json",
+        "to": "sbom.json"
+      }
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "signExecutable": false,
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "perMachine": false,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "MarkDown Viewer",
+      "include": "build/installer.nsh",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "uninstallDisplayName": "MarkDown Viewer ${version}",
+      "artifactName": "${productName} Setup ${version}.${ext}",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true
+    },
+    "portable": {
+      "artifactName": "${productName} ${version}.${ext}"
+    }
+  }
+}

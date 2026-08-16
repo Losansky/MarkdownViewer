@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://markdown-viewer.local/presentation.schema.json",
+  "title": "MarkDownViewer Presentation Config",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "presentation": {
+      "type": "object",
+      "properties": {
+        "theme": { "type": "string", "enum": ["light", "dark"] },
+        "fontFamily": { "type": "string" },
+        "fontSizePx": { "type": "number", "minimum": 10, "maximum": 48 },
+        "lineHeight": { "type": "number", "minimum": 1, "maximum": 3 },
+        "maxWidthPx": { "type": "number", "minimum": 320 },
+        "codeFontFamily": { "type": "string" },
+        "background": { "type": ["string", "null"] },
+        "foreground": { "type": ["string", "null"] }
+      }
+    },
+    "markdown": {
+      "type": "object",
+      "properties": {
+        "breaks": { "type": "boolean" },
+        "linkify": { "type": "boolean" },
+        "typographer": { "type": "boolean" },
+        "html": {
+          "type": "boolean",
+          "description": "Ignored unless MDV_ALLOW_HTML=1 in an unpackaged (dev) build"
+        }
+      }
+    },
+    "editors": {
+      "type": "object",
+      "description": "External editors for Open in Editor / context menus",
+      "properties": {
+        "default": {
+          "type": "string",
+          "description": "Id of the default editor in list"
+        },
+        "list": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "command"],
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "command": { "type": "string" },
+              "args": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Use {{file}} for the absolute path"
+              }
+            }
+          }
+        }
+      }
+    },
+    "formats": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "mermaid": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "fence": { "type": "string" },
+            "theme": { "type": "string" },
+            "themeVariables": { "type": "object" },
+            "securityLevel": {
+              "type": "string",
+              "enum": ["strict", "sandbox"],
+              "description": "loose and antiscript are clamped to strict"
+            },
+            "fontFamily": { "type": ["string", "null"] }
+          }
+        },
+        "math": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "engine": { "type": "string", "const": "katex" },
+            "inlineDelimiters": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": { "type": "string" }
+              }
+            },
+            "blockDelimiters": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": { "type": "string" }
+              }
+            },
+            "throwOnError": { "type": "boolean" }
+          }
+        },
+        "codeHighlight": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "theme": { "type": "string" },
+            "lineNumbers": { "type": "boolean" }
+          }
+        },
+        "admonitions": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "syntax": { "type": "string", "const": "github" },
+            "types": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "color": { "type": "string" },
+                  "icon": { "type": "string" }
+                },
+                "required": ["title", "color"]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

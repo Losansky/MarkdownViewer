@@ -1,0 +1,120 @@
+{
+	"$schema": "./presentation.schema.json",
+	"presentation": {
+		"theme": "light",
+		"fontFamily": "Segoe UI, system-ui, sans-serif",
+		"fontSizePx": 16,
+		"lineHeight": 1.6,
+		"maxWidthPx": 1100,
+		"codeFontFamily": "Cascadia Code, Consolas, monospace",
+		"background": null,
+		"foreground": null
+	},
+	"editors": {
+		"default": "Notepad++",
+		"list": [
+			{
+				"id": "Notepad++",
+				"name": "Notepad++",
+				"command": "C:\\Program Files\\Notepad++\\notepad++.exe",
+				"args": [
+					"{{file}}"
+				]
+			},
+			{
+				"id": "vscode",
+				"name": "Visual Studio Code",
+				"command": "code",
+				"args": [
+					"{{file}}"
+				]
+			},
+			{
+				"id": "notepad",
+				"name": "Notepad",
+				"command": "notepad.exe",
+				"args": [
+					"{{file}}"
+				]
+			}
+		]
+	},
+	"markdown": {
+		"breaks": false,
+		"linkify": true,
+		"typographer": true,
+		"html": false
+	},
+	"formats": {
+		"mermaid": {
+			"enabled": true,
+			"fence": "mermaid",
+			"theme": "default",
+			"themeVariables": {
+			},
+			"securityLevel": "strict",
+			"fontFamily": null
+		},
+		"math": {
+			"enabled": true,
+			"engine": "katex",
+			"inlineDelimiters": [
+				[
+					"$",
+					"$"
+				],
+				[
+					"\\(",
+					"\\)"
+				]
+			],
+			"blockDelimiters": [
+				[
+					"$$",
+					"$$"
+				],
+				[
+					"\\[",
+					"\\]"
+				]
+			],
+			"throwOnError": false
+		},
+		"codeHighlight": {
+			"enabled": true,
+			"theme": "github",
+			"lineNumbers": false
+		},
+		"admonitions": {
+			"enabled": true,
+			"syntax": "github",
+			"types": {
+				"note": {
+					"title": "Note",
+					"color": "#0969da",
+					"icon": "info"
+				},
+				"tip": {
+					"title": "Tip",
+					"color": "#1a7f37",
+					"icon": "lightbulb"
+				},
+				"important": {
+					"title": "Important",
+					"color": "#8250df",
+					"icon": "report"
+				},
+				"warning": {
+					"title": "Warning",
+					"color": "#9a6700",
+					"icon": "alert"
+				},
+				"caution": {
+					"title": "Caution",
+					"color": "#cf222e",
+					"icon": "stop"
+				}
+			}
+		}
+	}
+}
