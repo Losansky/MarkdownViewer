@@ -31,7 +31,7 @@
   },
   "dependencies": {
     "highlight.js": "^11.12.0",
-    "katex": "^0.16.21",
+    "katex": "^0.18.4",
     "markdown-it": "^14.1.0",
     "markdown-it-multimd-table": "^4.2.3",
     "markdown-it-task-lists": "^2.1.1",
