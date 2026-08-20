@@ -470,6 +470,74 @@ body {
   background: var(--md-bg);
 }
 
+#document-row {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+#toc {
+  width: 220px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--md-border);
+  background: var(--chrome-bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#toc[hidden] {
+  display: none;
+}
+
+#toc-header {
+  padding: 10px 12px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--md-muted);
+  border-bottom: 1px solid var(--md-border);
+}
+
+#toc-list {
+  overflow: auto;
+  padding: 8px 0 16px;
+}
+
+.toc-empty {
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  color: var(--md-muted);
+}
+
+.toc-item {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--md-fg);
+  font: inherit;
+  font-size: 0.8rem;
+  text-align: left;
+  padding: 4px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toc-item:hover {
+  background: var(--tree-hover);
+}
+
+.toc-level-2 { padding-left: 20px; }
+.toc-level-3 { padding-left: 28px; }
+.toc-level-4 { padding-left: 36px; }
+.toc-level-5 { padding-left: 44px; }
+.toc-level-6 { padding-left: 52px; }
+
 #tab-bar {
   display: flex;
   align-items: stretch;
@@ -552,6 +620,7 @@ body {
 
 #main {
   flex: 1;
+  min-width: 0;
   overflow: auto;
   position: relative;
   min-height: 0;
@@ -639,6 +708,34 @@ body {
 .find-btn.find-close {
   font-size: 1.1rem;
   font-weight: 600;
+}
+
+.find-options {
+  display: flex;
+  gap: 6px;
+  padding: 0 12px 8px;
+}
+
+.find-option {
+  appearance: none;
+  min-width: 30px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--md-border);
+  border-radius: 6px;
+  background: var(--md-surface);
+  color: var(--md-muted);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.find-option.active,
+.find-option[aria-pressed='true'] {
+  border-color: var(--md-accent);
+  color: var(--md-accent);
+  background: var(--tree-selected);
 }
 
 .find-scopes {
@@ -758,7 +855,54 @@ body {
   outline-color: #ff922b;
 }
 
+#doc-view {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  min-height: 100%;
+}
+
+#doc-view:has(#preview[hidden]) {
+  display: none;
+}
+
+#line-gutter {
+  display: none;
+  box-sizing: border-box;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  flex: 0 0 3.5rem;
+  width: 3.5rem;
+  margin: 0;
+  min-height: 100%;
+  background: var(--chrome-bg);
+  border-right: 1px solid var(--md-border);
+  color: var(--md-muted);
+  user-select: none;
+  pointer-events: none;
+}
+
+#doc-view.line-numbers-on #line-gutter {
+  display: block;
+}
+
+#line-gutter .ln {
+  position: absolute;
+  right: 0;
+  left: 0;
+  padding: 0 8px 0 4px;
+  text-align: right;
+  font-family: var(--md-code-font-family);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
 #preview {
+  flex: 1;
+  min-width: 0;
   width: 100%;
   max-width: none;
   margin: 0;
@@ -769,6 +913,11 @@ body {
 #preview.has-content {
   max-width: var(--md-max-width);
   margin: 0 auto;
+}
+
+#doc-view.line-numbers-on #preview.has-content {
+  margin-left: 0;
+  margin-right: auto;
 }
 
 /* —— Markdown content —— */
@@ -878,10 +1027,36 @@ body {
 }
 
 #preview pre code {
+  display: block;
   background: none;
   padding: 0;
   font-size: 0.875em;
   line-height: 1.45;
+}
+
+#preview pre.hljs-line-numbers {
+  padding: 12px 12px 12px 0;
+}
+
+#preview .hljs-ln {
+  display: block;
+}
+
+#preview .hljs-ln-num {
+  display: inline-block;
+  width: 3em;
+  padding: 0 8px 0 12px;
+  margin-right: 12px;
+  text-align: right;
+  color: var(--md-muted);
+  user-select: none;
+  border-right: 1px solid var(--md-border);
+  box-sizing: content-box;
+  font-variant-numeric: tabular-nums;
+}
+
+#preview .hljs-ln-code {
+  white-space: pre;
 }
 
 #preview img {
@@ -1252,4 +1427,38 @@ body {
 .about-json-menu-item:focus-visible {
   background: var(--tree-hover);
   outline: none;
+}
+
+#app.is-drop-target {
+  outline: 3px dashed var(--md-accent);
+  outline-offset: -6px;
+}
+
+@media print {
+  #sidebar,
+  #splitter,
+  #tab-bar,
+  #find-bar,
+  #toc,
+  #error-banner,
+  #welcome {
+    display: none !important;
+  }
+
+  #app,
+  #workspace,
+  #document-row,
+  #main,
+  #doc-view,
+  #preview {
+    display: block;
+    height: auto !important;
+    overflow: visible !important;
+    width: 100% !important;
+  }
+
+  #doc-view.line-numbers-on {
+    display: flex !important;
+    width: 100% !important;
+  }
 }

@@ -9,6 +9,7 @@ Thumbs.db
 .idea/
 *.local
 *.tsbuildinfo
+scripts/.smoke-bundle.mjs
 build/sbom.json
 .env
 .env.*

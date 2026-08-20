@@ -1,18 +1,20 @@
 import { BrowserWindow, dialog } from 'electron'
 import { readFileSync, watch, existsSync, statSync, type FSWatcher } from 'fs'
+import { readFile } from 'fs/promises'
 import type {
   OpenedFilePayload,
   FileErrorPayload,
   TreeNode,
   OpenedFolderPayload,
-  SearchHit
+  SearchHit,
+  FindOptions
 } from '../shared/types'
 import { isMarkdownPath } from './security'
 import { buildMarkdownTree } from './markdownTree'
+import { collectTextHits, SEARCH_MAX_HITS } from '../shared/search'
 
 export { buildMarkdownTree }
 
-const SEARCH_MAX_HITS = 500
 const SEARCH_MAX_FILE_BYTES = 2 * 1024 * 1024
 
 const MARKDOWN_FILTERS = [
@@ -24,9 +26,7 @@ export class FileService {
   private watchers = new Map<string, FSWatcher>()
   private debouncers = new Map<string, NodeJS.Timeout>()
   private lastActivePath: string | null = null
-  /** Currently open explorer folder root (watched for tree refresh). */
   private folderRoot: string | null = null
-  /** Path the folder watcher is actually attached to. */
   private folderWatchPath: string | null = null
   private folderWatcher: FSWatcher | null = null
   private folderDebounce: NodeJS.Timeout | null = null
@@ -104,7 +104,6 @@ export class FileService {
     }
   }
 
-  /** Rebuild tree for the open folder without re-prompting the user. */
   refreshOpenFolder(): OpenedFolderPayload | null {
     if (!this.folderRoot) return null
     return this.openFolder(this.folderRoot)
@@ -153,20 +152,26 @@ export class FileService {
     this.lastActivePath = filePath
   }
 
-  searchFolder(rootPath: string, query: string): SearchHit[] {
+  async searchFolder(
+    rootPath: string,
+    query: string,
+    options?: FindOptions
+  ): Promise<SearchHit[]> {
     const q = query.trim()
     if (!q || !rootPath || !existsSync(rootPath)) return []
     const tree = buildMarkdownTree(rootPath)
     if (!tree) return []
     const files = collectMarkdownFiles(tree)
     const hits: SearchHit[] = []
+
     for (const filePath of files) {
       try {
         const stat = statSync(filePath)
         if (!stat.isFile() || stat.size > SEARCH_MAX_FILE_BYTES) continue
-        const content = readFileSync(filePath, 'utf-8')
-        collectTextHits(filePath, content, q, hits)
+        const content = await readFile(filePath, 'utf-8')
+        collectTextHits(filePath, content, q, hits, options)
         if (hits.length >= SEARCH_MAX_HITS) break
+        await yieldToEventLoop()
       } catch {
         // Skip unreadable files
       }
@@ -192,7 +197,6 @@ export class FileService {
         const timer = setTimeout(() => {
           this.debouncers.delete(filePath)
           if (this.watchers.has(filePath)) {
-            // Silent reload — do not re-notify as a new open if read fails
             try {
               if (!existsSync(filePath)) return
               const content = readFileSync(filePath, 'utf-8')
@@ -224,15 +228,8 @@ export class FileService {
     }
   }
 
-  /**
-   * Watch the explorer root for add/remove/rename so the tree stays current.
-   * Uses recursive watch (supported on Windows/macOS; best-effort on Linux).
-   */
   private watchFolder(rootPath: string): void {
-    if (this.folderWatcher && this.folderWatchPath === rootPath) {
-      // Already watching this root
-      return
-    }
+    if (this.folderWatcher && this.folderWatchPath === rootPath) return
     this.stopFolderWatch()
     this.folderRoot = rootPath
     this.folderWatchPath = rootPath
@@ -270,7 +267,6 @@ export class FileService {
     this.folderWatchPath = null
   }
 
-  /** Rebuild and push tree without restarting the watcher (avoids thrash). */
   private refreshFolderQuietly(): void {
     const rootPath = this.folderRoot
     if (!rootPath) return
@@ -298,40 +294,6 @@ function collectMarkdownFiles(node: TreeNode, into: string[] = []): string[] {
   return into
 }
 
-function collectTextHits(
-  path: string,
-  content: string,
-  query: string,
-  into: SearchHit[]
-): void {
-  const lowerQuery = query.toLowerCase()
-  const lines = content.split(/\r?\n/)
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    const lower = line.toLowerCase()
-    let start = 0
-    while (start < line.length) {
-      const idx = lower.indexOf(lowerQuery, start)
-      if (idx === -1) break
-      into.push({
-        path,
-        line: i + 1,
-        column: idx + 1,
-        length: query.length,
-        snippet: makeSnippet(line, idx, query.length)
-      })
-      if (into.length >= SEARCH_MAX_HITS) return
-      start = idx + query.length
-    }
-  }
-}
-
-function makeSnippet(line: string, index: number, length: number): string {
-  const pad = 36
-  const start = Math.max(0, index - pad)
-  const end = Math.min(line.length, index + length + pad)
-  let snippet = line.slice(start, end).replace(/\s+/g, ' ')
-  if (start > 0) snippet = `…${snippet}`
-  if (end < line.length) snippet = `${snippet}…`
-  return snippet
+function yieldToEventLoop(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve))
 }

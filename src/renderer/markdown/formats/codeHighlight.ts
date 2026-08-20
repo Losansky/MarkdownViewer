@@ -46,6 +46,26 @@ function ensureLanguages(): void {
   registered = true
 }
 
+function wrapNumberedLines(lineBodies: string[]): string {
+  return lineBodies
+    .map(
+      (lineHtml, i) =>
+        `<span class="hljs-ln-line"><span class="hljs-ln-num" aria-hidden="true">${i + 1}</span><span class="hljs-ln-code">${lineHtml}</span></span>`
+    )
+    .join('\n')
+}
+
+function highlightToLines(highlighted: string, content: string): string {
+  const srcLines = content.replace(/\n$/, '').split('\n')
+  const htmlLines = highlighted.split(/\r?\n/)
+  return wrapNumberedLines(srcLines.map((_, i) => htmlLines[i] ?? ''))
+}
+
+function classAttr(parts: Array<string | false | null | undefined>): string {
+  const classes = parts.filter((part): part is string => Boolean(part))
+  return classes.length > 0 ? ` class="${classes.join(' ')}"` : ''
+}
+
 export function applyCodeHighlight(
   md: MarkdownIt,
   config: CodeHighlightFormatConfig,
@@ -62,36 +82,44 @@ export function applyCodeHighlight(
     const token = tokens[idx]
     const info = (token.info || '').trim()
     const lang = info.split(/\s+/)[0]?.toLowerCase() ?? ''
+    const content = token.content.replace(/\n$/, '')
 
     if (lang && reservedFences.has(lang)) {
       return defaultFence(tokens, idx, options, env, self)
     }
 
+    const langClass = lang ? `language-${md.utils.escapeHtml(lang)}` : ''
+
     if (lang && hljs.getLanguage(lang)) {
       try {
-        const highlighted = hljs.highlight(token.content, { language: lang, ignoreIllegals: true })
-        const lineClass = config.lineNumbers ? ' hljs-line-numbers' : ''
-        return `<pre class="hljs${lineClass}"><code class="language-${md.utils.escapeHtml(lang)}">${highlighted.value}</code></pre>\n`
+        const highlighted = hljs.highlight(content, { language: lang, ignoreIllegals: true })
+        if (config.lineNumbers) {
+          const body = highlightToLines(highlighted.value, content)
+          return `<pre class="hljs hljs-line-numbers"><code${classAttr([langClass, 'hljs-ln'])}>${body}</code></pre>\n`
+        }
+        return `<pre class="hljs"><code${classAttr([langClass])}>${highlighted.value}</code></pre>\n`
       } catch {
         // fall through
       }
     }
 
-    const escaped = md.utils.escapeHtml(token.content)
-    const langClass = lang ? ` class="language-${md.utils.escapeHtml(lang)}"` : ''
-    return `<pre class="hljs"><code${langClass}>${escaped}</code></pre>\n`
+    const escaped = md.utils.escapeHtml(content)
+    if (config.lineNumbers) {
+      const body = wrapNumberedLines(content.split('\n').map((line) => md.utils.escapeHtml(line)))
+      return `<pre class="hljs hljs-line-numbers"><code${classAttr([langClass, 'hljs', 'hljs-ln'])}>${body}</code></pre>\n`
+    }
+    return `<pre class="hljs"><code${classAttr([langClass])}>${escaped}</code></pre>\n`
   }
 }
 
 export function highlightThemeHref(theme: string): string {
-  // Map config theme names to highlight.js CSS file basenames under /node_modules
   const map: Record<string, string> = {
     github: 'github',
     'github-dark': 'github-dark',
     'github-dark-dimmed': 'github-dark-dimmed',
     monokai: 'monokai',
     vs: 'vs',
-    'vs2015': 'vs2015',
+    vs2015: 'vs2015',
     'atom-one-dark': 'atom-one-dark',
     'atom-one-light': 'atom-one-light'
   }

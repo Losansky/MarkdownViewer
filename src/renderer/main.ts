@@ -1,6 +1,7 @@
 import './styles/preview.css'
 import 'katex/dist/katex.min.css'
-import type { PresentationConfig, AppCommand, RecentList } from '../shared/types'
+import type { PresentationConfig, ConfigStatus } from '../shared/types'
+import { fileName } from '../shared/pathUtils'
 import { PreviewController } from './ui/preview'
 import { TabManager, type TabState } from './ui/tabs'
 import { TreeView } from './ui/tree'
@@ -8,6 +9,12 @@ import { hasRecents, renderRecentsPanel } from './ui/recents'
 import { FindBar } from './ui/findBar'
 import { SidebarSplitter } from './ui/splitter'
 import { AboutDialog } from './ui/aboutDialog'
+import { TocPanel } from './ui/toc'
+import { AppState } from './app/state'
+import { dispatchCommand } from './app/commands'
+import { bindKeyboardShortcuts } from './app/shortcuts'
+import { bindFileDrop } from './app/drop'
+import type { AppContext } from './app/context'
 
 const appEl = document.getElementById('app') as HTMLElement
 const sidebarEl = document.getElementById('sidebar') as HTMLElement
@@ -22,25 +29,24 @@ const mainEl = document.getElementById('main') as HTMLElement
 const previewEl = document.getElementById('preview') as HTMLElement
 const welcomeEl = document.getElementById('welcome') as HTMLElement
 const errorEl = document.getElementById('error-banner') as HTMLElement
+const tocEl = document.getElementById('toc') as HTMLElement
+const tocListEl = document.getElementById('toc-list') as HTMLElement
 
+const state = new AppState()
 let preview: PreviewController
 let tabs: TabManager
 let tree: TreeView
 let findBar: FindBar
+let toc: TocPanel
 let aboutDialog: AboutDialog
-let folderRoot: string | null = null
-let recents: RecentList = { files: [], folders: [] }
-let config: PresentationConfig
-/** Applied after the next preview render (in-doc link with #heading). */
-let pendingScrollHash: string | null = null
+let ctx: AppContext
 
 function setDocumentTitle(path: string | null): void {
   if (!path) {
     document.title = 'MarkDown Viewer'
     return
   }
-  const name = path.split(/[/\\]/).pop() ?? path
-  document.title = `${name} — MarkDown Viewer`
+  document.title = `${fileName(path)} — MarkDown Viewer`
 }
 
 function updateWelcomeVisibility(): void {
@@ -65,12 +71,12 @@ function paintRecents(): void {
     void window.api.clearRecents()
   }
 
-  if (!folderRoot) {
-    renderRecentsPanel(sidebarEmptyEl, recents, {
+  if (!state.folderRoot) {
+    renderRecentsPanel(sidebarEmptyEl, state.recents, {
       variant: 'sidebar',
       onOpenFile: openFile,
       onOpenFolder: openFolder,
-      onClear: hasRecents(recents) ? clear : undefined
+      onClear: hasRecents(state.recents) ? clear : undefined
     })
   }
 
@@ -80,11 +86,11 @@ function paintRecents(): void {
 
   const welcomeBody = document.createElement('div')
   welcomeBody.className = 'welcome-body'
-  renderRecentsPanel(welcomeBody, recents, {
+  renderRecentsPanel(welcomeBody, state.recents, {
     variant: 'welcome',
     onOpenFile: openFile,
     onOpenFolder: openFolder,
-    onClear: hasRecents(recents) ? clear : undefined
+    onClear: hasRecents(state.recents) ? clear : undefined
   })
 
   const actions = document.createElement('div')
@@ -93,21 +99,52 @@ function paintRecents(): void {
   openFileBtn.type = 'button'
   openFileBtn.className = 'welcome-btn primary'
   openFileBtn.textContent = 'Open File…'
-  openFileBtn.addEventListener('click', () => void handleCommand('open-file'))
+  openFileBtn.addEventListener('click', () => void dispatchCommand(ctx, 'open-file'))
   const openFolderBtn = document.createElement('button')
   openFolderBtn.type = 'button'
   openFolderBtn.className = 'welcome-btn'
   openFolderBtn.textContent = 'Open Folder…'
-  openFolderBtn.addEventListener('click', () => void handleCommand('open-folder'))
+  openFolderBtn.addEventListener('click', () => void dispatchCommand(ctx, 'open-folder'))
   actions.append(openFileBtn, openFolderBtn)
 
   welcomeEl.replaceChildren(welcomeTitle, actions, welcomeBody)
   updateWelcomeVisibility()
 }
 
+function persistSession(): void {
+  void window.api.saveSession({
+    tabs: tabs.getTabs().map((tab) => tab.path),
+    activePath: tabs.getActivePath(),
+    folderRoot: state.folderRoot,
+    tocVisible: state.tocVisible
+  })
+}
+
+function applyConfig(next: PresentationConfig, warning?: string | null): void {
+  state.config = next
+  preview.setConfig(next)
+  if (warning) preview.showError(warning)
+}
+
+async function toggleTheme(): Promise<void> {
+  const next = state.config.presentation.theme === 'dark' ? 'light' : 'dark'
+  applyConfig(await window.api.setTheme(next))
+}
+
+async function openActiveInEditor(): Promise<void> {
+  const path = tabs.getActivePath()
+  if (!path) {
+    preview.showError('No file is open to edit externally.')
+    return
+  }
+  const result = await window.api.openInEditor(path)
+  if (!result.ok && result.message) preview.showError(result.message)
+}
+
 async function activateTab(tab: TabState | null): Promise<void> {
   if (!tab) {
     preview.clear()
+    toc.setSource(null)
     setDocumentTitle(null)
     tree.setSelected(null)
     await window.api.setActivePath(null)
@@ -121,10 +158,12 @@ async function activateTab(tab: TabState | null): Promise<void> {
   tree.setSelected(tab.path)
   setDocumentTitle(tab.path)
   await window.api.setActivePath(tab.path)
-  const hash = pendingScrollHash
-  pendingScrollHash = null
+  const hash = state.pendingScrollHash
+  state.pendingScrollHash = null
   await preview.open(tab.path, tab.content, hash)
+  toc.setSource(tab.content)
   findBar.onContentChanged()
+  persistSession()
 }
 
 async function openFilePath(path: string): Promise<void> {
@@ -136,7 +175,6 @@ async function openFilePath(path: string): Promise<void> {
   await window.api.openPath(path)
 }
 
-/** Handle links in the preview (relative .md, external URLs, #anchors). */
 async function handlePreviewLink(href: string): Promise<void> {
   const fromFile = tabs.getActivePath() ?? preview.getPath()
   const result = await window.api.openLink(fromFile, href)
@@ -145,37 +183,25 @@ async function handlePreviewLink(href: string): Promise<void> {
     preview.scrollToHash(result.hash)
     return
   }
-
   if (result.kind === 'error') {
     preview.showError(result.message)
     return
   }
-
-  if (result.kind === 'cancelled') {
-    return
-  }
-
+  if (result.kind === 'cancelled') return
   if (result.kind === 'external') {
-    if (!result.ok && result.message) {
-      preview.showError(result.message)
-    }
+    if (!result.ok && result.message) preview.showError(result.message)
     return
   }
-
-  // kind === 'file'
   if (!result.ok) {
     preview.showError(result.message ?? `Could not open: ${result.path}`)
     return
   }
-
-  // Markdown was opened via main → file:opened during the IPC call.
-  // Scroll to #hash after render if the active preview is that file.
   if (result.hash) {
     const tryScroll = (): void => {
       if (preview.getPath() === result.path) {
         preview.scrollToHash(result.hash!)
       } else {
-        pendingScrollHash = result.hash
+        state.pendingScrollHash = result.hash
       }
     }
     requestAnimationFrame(tryScroll)
@@ -186,104 +212,21 @@ function showContextMenuFor(path: string): void {
   void window.api.showFileContextMenu(path)
 }
 
-async function openActiveInEditor(): Promise<void> {
-  const path = tabs.getActivePath()
-  if (!path) {
-    preview.showError('No file is open to edit externally.')
-    return
-  }
-  const result = await window.api.openInEditor(path)
-  if (!result.ok && result.message) {
-    preview.showError(result.message)
-  }
-}
-
-async function toggleTheme(): Promise<void> {
-  const next = config.presentation.theme === 'dark' ? 'light' : 'dark'
-  const updated = await window.api.setTheme(next)
-  config = updated
-  preview.setConfig(updated)
-}
-
-async function handleCommand(command: AppCommand): Promise<void> {
-  switch (command) {
-    case 'open-file':
-      await window.api.openFile()
-      break
-    case 'open-folder':
-      await window.api.openFolder()
-      break
-    case 'reload': {
-      const active = tabs.getActivePath()
-      if (active) {
-        await window.api.reloadFile(active)
-      } else {
-        await window.api.reloadFile()
-      }
-      break
-    }
-    case 'close-tab': {
-      const active = tabs.getActivePath()
-      if (active) tabs.close(active)
-      break
-    }
-    case 'close-all-tabs':
-      tabs.closeAll()
-      break
-    case 'refresh-folder':
-      if (folderRoot) {
-        await window.api.refreshFolder(folderRoot)
-      } else {
-        await window.api.openFolder()
-      }
-      break
-    case 'toggle-sidebar':
-      appEl.classList.toggle('sidebar-collapsed')
-      sidebarEl.setAttribute(
-        'aria-hidden',
-        appEl.classList.contains('sidebar-collapsed') ? 'true' : 'false'
-      )
-      break
-    case 'open-in-editor':
-      await openActiveInEditor()
-      break
-    case 'toggle-theme':
-      await toggleTheme()
-      break
-    case 'find':
-      findBar.show('current')
-      break
-    case 'find-in-open-files':
-      findBar.show('open-files')
-      break
-    case 'find-in-folder':
-      findBar.show(folderRoot ? 'folder' : 'current')
-      break
-    case 'find-next':
-      findBar.findNext()
-      break
-    case 'find-previous':
-      findBar.findPrevious()
-      break
-    case 'about': {
-      const info = await window.api.getAbout()
-      aboutDialog.show(info)
-      break
-    }
-  }
-}
-
 async function init(): Promise<void> {
-  config = await window.api.getConfig()
-  preview = new PreviewController(previewEl, errorEl, config)
+  const status = await window.api.getConfig()
+  state.config = status.config
+  preview = new PreviewController(previewEl, errorEl, state.config)
   preview.applyPresentationStyles()
   await preview.loadHighlightTheme()
   preview.clear()
+  if (status.warning) preview.showError(status.warning)
   preview.setOnLinkClick((href) => {
     void handlePreviewLink(href)
   })
 
   aboutDialog = new AboutDialog()
+  toc = new TocPanel(tocEl, tocListEl)
+  toc.setOnNavigate((id) => preview.scrollToHash(id))
 
   new SidebarSplitter(appEl, sidebarEl, splitterEl)
 
@@ -294,6 +237,7 @@ async function init(): Promise<void> {
     },
     (path) => {
       void window.api.closePath(path)
+      persistSession()
     }
   )
   tabs.setOnContextMenu(showContextMenuFor)
@@ -309,10 +253,10 @@ async function init(): Promise<void> {
         name: tab.name,
         content: tab.content
       })),
-    getFolderRoot: () => folderRoot,
-    searchFolder: async (query) => {
-      if (!folderRoot) return []
-      return window.api.searchFolder(folderRoot, query)
+    getFolderRoot: () => state.folderRoot,
+    searchFolder: async (query, options) => {
+      if (!state.folderRoot) return []
+      return window.api.searchFolder(state.folderRoot, query, options)
     },
     openPath: (path) => openFilePath(path)
   })
@@ -330,7 +274,22 @@ async function init(): Promise<void> {
   tree.setOnContextMenu(showContextMenuFor)
   tree.setTree(null)
 
-  // Context menu on preview when a document is open
+  ctx = {
+    appEl,
+    sidebarEl,
+    preview,
+    tabs,
+    tree,
+    findBar,
+    toc,
+    aboutDialog,
+    state,
+    applyConfig,
+    persistSession,
+    toggleTheme,
+    openActiveInEditor
+  }
+
   previewEl.addEventListener('contextmenu', (e) => {
     const path = tabs.getActivePath()
     if (!path) return
@@ -338,11 +297,23 @@ async function init(): Promise<void> {
     showContextMenuFor(path)
   })
 
-  recents = await window.api.getRecents()
+  bindFileDrop(appEl, {
+    openFile: openFilePath,
+    openFolder: async (path) => {
+      await window.api.refreshFolder(path)
+    },
+    pathKind: (path) => window.api.pathKind(path)
+  })
+
+  bindKeyboardShortcuts(ctx, (command) => {
+    void dispatchCommand(ctx, command)
+  })
+
+  state.recents = await window.api.getRecents()
   paintRecents()
 
   window.api.onRecentsUpdated((list) => {
-    recents = list
+    state.recents = list
     paintRecents()
   })
 
@@ -353,9 +324,10 @@ async function init(): Promise<void> {
       if (tabs.getActivePath() === payload.path) {
         previewEl.hidden = false
         welcomeEl.hidden = true
-        const hash = pendingScrollHash
-        pendingScrollHash = null
+        const hash = state.pendingScrollHash
+        state.pendingScrollHash = null
         await preview.open(payload.path, payload.content, hash)
+        toc.setSource(payload.content)
         setDocumentTitle(payload.path)
         tree.setSelected(payload.path)
         await window.api.setActivePath(payload.path)
@@ -364,99 +336,46 @@ async function init(): Promise<void> {
       return
     }
     tabs.upsert(payload.path, payload.content, true)
+    persistSession()
   })
 
   window.api.onFileError((payload) => {
     preview.showError(payload.message)
   })
 
-  window.api.onConfigUpdated((next) => {
-    config = next
-    preview.setConfig(next)
-    // Config re-render replaces preview DOM; re-apply find highlights if open
+  window.api.onConfigUpdated((next: ConfigStatus) => {
+    applyConfig(next.config, next.warning)
     queueMicrotask(() => findBar.onContentChanged())
   })
 
   window.api.onFolderOpened((payload) => {
-    folderRoot = payload.rootPath
+    state.folderRoot = payload.rootPath
     tree.setTree(payload.tree)
     if (tabs.getActivePath()) {
       tree.setSelected(tabs.getActivePath())
     }
     paintRecents()
+    persistSession()
   })
 
   window.api.onCommand((command) => {
-    void handleCommand(command)
+    void dispatchCommand(ctx, command)
   })
 
-  window.addEventListener('keydown', (e) => {
-    const key = e.key.toLowerCase()
-    const mod = e.ctrlKey || e.metaKey
-
-    // Find shortcuts (also when focus is outside the find input)
-    if (mod && key === 'f' && e.shiftKey && !e.altKey) {
-      e.preventDefault()
-      void handleCommand('find-in-open-files')
-      return
-    }
-    if (mod && key === 'f' && !e.shiftKey && !e.altKey) {
-      e.preventDefault()
-      void handleCommand('find')
-      return
-    }
-    if (mod && key === 'g' && e.shiftKey && !e.altKey) {
-      e.preventDefault()
-      void handleCommand('find-in-folder')
-      return
-    }
-    if (key === 'f3' || (mod && key === 'g' && !e.altKey)) {
-      e.preventDefault()
-      void handleCommand(e.shiftKey ? 'find-previous' : 'find-next')
-      return
-    }
-    if (e.key === 'Escape' && aboutDialog.isOpen()) {
-      e.preventDefault()
-      aboutDialog.hide()
-      return
-    }
-    if (e.key === 'Escape' && findBar.isOpen()) {
-      // Let the find input handle Escape when focused; otherwise close here
-      if (document.activeElement?.id !== 'find-input') {
-        e.preventDefault()
-        findBar.hide()
-      }
-      return
-    }
-
-    if (!mod) return
-
-    if (key === 'o' && e.shiftKey) {
-      e.preventDefault()
-      void handleCommand('open-folder')
-    } else if (key === 'o') {
-      e.preventDefault()
-      void handleCommand('open-file')
-    } else if (key === 'w' && e.shiftKey) {
-      e.preventDefault()
-      void handleCommand('close-all-tabs')
-    } else if (key === 'w') {
-      e.preventDefault()
-      void handleCommand('close-tab')
-    } else if (key === 'b') {
-      e.preventDefault()
-      void handleCommand('toggle-sidebar')
-    } else if (key === 'r' && e.shiftKey) {
-      e.preventDefault()
-      void handleCommand('refresh-folder')
-    } else if (key === 'e') {
-      e.preventDefault()
-      void handleCommand('open-in-editor')
-    } else if (key === 'd' && e.shiftKey) {
-      e.preventDefault()
-      void handleCommand('toggle-theme')
-    }
-  })
+  const session = await window.api.getSession()
+  if (session.tocVisible) {
+    state.tocVisible = true
+    toc.setVisible(true)
+  }
+  if (session.folderRoot) {
+    await window.api.refreshFolder(session.folderRoot)
+  }
+  for (const filePath of session.tabs) {
+    await window.api.openPath(filePath)
+  }
+  if (session.activePath && tabs.getTab(session.activePath)) {
+    tabs.setActive(session.activePath)
+  }
 }
 
 void init()

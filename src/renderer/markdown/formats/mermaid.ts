@@ -1,5 +1,4 @@
 import type MarkdownIt from 'markdown-it'
-import mermaid from 'mermaid'
 import type { MermaidFormatConfig } from '../../../shared/types'
 
 let initialized = false
@@ -37,6 +36,7 @@ export async function renderMermaidDiagrams(
   const nodes = root.querySelectorAll<HTMLElement>('.mermaid')
   if (nodes.length === 0) return []
 
+  const { default: mermaid } = await import('mermaid')
   const theme = config.theme || 'default'
   if (!initialized || lastTheme !== theme) {
     mermaid.initialize({

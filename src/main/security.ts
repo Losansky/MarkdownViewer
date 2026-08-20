@@ -3,6 +3,14 @@ import type { PresentationConfig } from '../shared/types'
 
 export const MARKDOWN_EXTENSIONS = new Set(['.md', '.markdown', '.mdown', '.mkd'])
 
+const CSS_COLOR =
+  /^(#[0-9a-f]{3,8}|rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)|rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*[\d.]+\s*\)|[a-z]+)$/i
+
+function sanitizeCssColor(color: string, fallback = '#0969da'): string {
+  const trimmed = color.trim()
+  return CSS_COLOR.test(trimmed) ? trimmed : fallback
+}
+
 /** Local files the OS may open after the user confirms. Executables and shortcuts are excluded. */
 export const OS_OPEN_EXTENSIONS = new Set([
   '.pdf',
@@ -75,6 +83,11 @@ export function isDangerousHref(href: string): boolean {
   return /^(javascript:|data:|vbscript:|about:|blob:)/i.test(href.trim())
 }
 
+function clampNumber(value: unknown, fallback: number, min: number, max: number): number {
+  const n = typeof value === 'number' && Number.isFinite(value) ? value : fallback
+  return Math.min(max, Math.max(min, n))
+}
+
 export function clampPresentationConfig(
   config: PresentationConfig,
   options: { allowHtml: boolean }
@@ -89,12 +102,32 @@ export function clampPresentationConfig(
     mermaid.securityLevel = 'strict'
   }
 
+  const types = { ...config.formats.admonitions.types }
+  for (const [name, typeConfig] of Object.entries(types)) {
+    types[name] = {
+      ...typeConfig,
+      color: sanitizeCssColor(typeConfig.color)
+    }
+  }
+
+  const p = config.presentation
   return {
     ...config,
+    presentation: {
+      ...p,
+      theme: p.theme === 'dark' ? 'dark' : 'light',
+      fontSizePx: clampNumber(p.fontSizePx, 16, 10, 48),
+      lineHeight: clampNumber(p.lineHeight, 1.6, 1, 3),
+      maxWidthPx: clampNumber(p.maxWidthPx, 1100, 320, 4000)
+    },
     markdown,
     formats: {
       ...config.formats,
-      mermaid
+      mermaid,
+      admonitions: {
+        ...config.formats.admonitions,
+        types
+      }
     }
   }
 }

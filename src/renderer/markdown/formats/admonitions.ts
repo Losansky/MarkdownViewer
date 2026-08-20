@@ -1,5 +1,6 @@
 import type MarkdownIt from 'markdown-it'
 import type { AdmonitionsFormatConfig } from '../../../shared/types'
+import { sanitizeCssColor } from '../../../shared/cssUtils'
 
 /**
  * GitHub-style alerts:
@@ -42,7 +43,7 @@ export function applyAdmonitions(md: MarkdownIt, config: AdmonitionsFormatConfig
       // Mark the blockquote open token
       token.attrSet('class', `admonition admonition-${kind}`)
       token.attrSet('data-admonition', kind)
-      token.attrSet('style', `--admonition-color: ${typeConfig.color}`)
+      token.attrSet('style', `--admonition-color: ${sanitizeCssColor(typeConfig.color)}`)
 
       // Strip marker from inline content
       inline.content = inline.content.replace(/^\[![A-Za-z]+\]\s*/, '')

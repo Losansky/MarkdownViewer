@@ -61,8 +61,28 @@ export class TreeView {
   }
 
   setSelected(path: string | null): void {
+    if (this.selectedPath === path) return
+    const previous = this.selectedPath
     this.selectedPath = path
-    this.render()
+    if (!this.updateSelectedRow(previous, path)) {
+      this.render()
+    }
+  }
+
+  private updateSelectedRow(previous: string | null, next: string | null): boolean {
+    const rows = this.treeEl.querySelectorAll<HTMLElement>('.tree-row.file')
+    if (rows.length === 0 && next) return false
+    let foundNext = next === null
+    for (const row of rows) {
+      const rowPath = row.dataset.path ?? ''
+      const selected = Boolean(next && rowPath === next)
+      row.classList.toggle('selected', selected)
+      if (selected) foundNext = true
+      if (previous && rowPath === previous && !selected) {
+        row.classList.remove('selected')
+      }
+    }
+    return foundNext || next === null
   }
 
   getRootPath(): string | null {

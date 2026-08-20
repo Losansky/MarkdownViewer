@@ -124,16 +124,46 @@ export type AppCommand =
   | 'close-all-tabs'
   | 'refresh-folder'
   | 'toggle-sidebar'
+  | 'toggle-toc'
   | 'open-in-editor'
   | 'toggle-theme'
+  | 'toggle-line-numbers'
   | 'find'
   | 'find-next'
   | 'find-previous'
   | 'find-in-open-files'
   | 'find-in-folder'
+  | 'print'
+  | 'export-pdf'
   | 'about'
 
 export type FindScope = 'current' | 'open-files' | 'folder'
+
+export interface FindOptions {
+  caseSensitive: boolean
+  wholeWord: boolean
+  regex: boolean
+}
+
+export interface SessionState {
+  tabs: string[]
+  activePath: string | null
+  folderRoot: string | null
+  tocVisible?: boolean
+}
+
+export type PathKind = 'file' | 'directory' | 'missing'
+
+export interface ExportPdfResult {
+  ok: boolean
+  path?: string
+  message?: string
+}
+
+export interface ConfigStatus {
+  config: PresentationConfig
+  warning: string | null
+}
 
 export interface SearchHit {
   path: string
@@ -178,18 +208,28 @@ export interface AppApi {
   refreshFolder: (rootPath: string) => Promise<OpenedFolderPayload | null>
   /** Resolve href relative to fromFile and open (md in app, else OS / external). */
   openLink: (fromFile: string | null, href: string) => Promise<OpenLinkResult>
-  getConfig: () => Promise<PresentationConfig>
+  getConfig: () => Promise<ConfigStatus>
   getConfigPath: () => Promise<string>
   setTheme: (theme: ThemeName) => Promise<PresentationConfig>
+  setLineNumbers: (enabled: boolean) => Promise<PresentationConfig>
   getRecents: () => Promise<RecentList>
   clearRecents: () => Promise<RecentList>
+  getSession: () => Promise<SessionState>
+  saveSession: (state: SessionState) => Promise<void>
   openInEditor: (filePath: string, editorId?: string | null) => Promise<OpenEditorResult>
   showFileContextMenu: (filePath: string) => Promise<void>
-  searchFolder: (rootPath: string, query: string) => Promise<SearchHit[]>
+  searchFolder: (
+    rootPath: string,
+    query: string,
+    options?: FindOptions
+  ) => Promise<SearchHit[]>
+  print: () => Promise<void>
+  exportPdf: () => Promise<ExportPdfResult>
+  pathKind: (target: string) => Promise<PathKind>
   getAbout: () => Promise<AboutInfo>
   onFileOpened: (callback: (payload: OpenedFilePayload) => void) => () => void
   onFileError: (callback: (payload: FileErrorPayload) => void) => () => void
-  onConfigUpdated: (callback: (config: PresentationConfig) => void) => () => void
+  onConfigUpdated: (callback: (status: ConfigStatus) => void) => () => void
   onFolderOpened: (callback: (payload: OpenedFolderPayload) => void) => () => void
   onRecentsUpdated: (callback: (list: RecentList) => void) => () => void
   onCommand: (callback: (command: AppCommand) => void) => () => void

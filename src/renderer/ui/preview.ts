@@ -2,6 +2,7 @@ import type { MermaidFormatConfig, PresentationConfig } from '../../shared/types
 import { createPipeline } from '../markdown/createPipeline'
 import { renderMermaidDiagrams } from '../markdown/formats/mermaid'
 import { highlightThemeHref } from '../markdown/formats/codeHighlight'
+import { LineGutterController } from './lineGutter'
 
 const highlightThemeLoaders: Record<string, () => Promise<{ default: string }>> = {
   github: () => import('highlight.js/styles/github.min.css?url'),
@@ -42,10 +43,12 @@ export function resolveMermaidConfig(config: PresentationConfig): MermaidFormatC
 
 export class PreviewController {
   private config: PresentationConfig
+  private pipeline: ReturnType<typeof createPipeline>
   private content = ''
   private path: string | null = null
   private renderToken = 0
   private onLinkClick: ((href: string) => void) | null = null
+  private lineGutter: LineGutterController | null = null
 
   constructor(
     private previewEl: HTMLElement,
@@ -53,6 +56,13 @@ export class PreviewController {
     config: PresentationConfig
   ) {
     this.config = config
+    this.pipeline = createPipeline(config)
+    const docView = document.getElementById('doc-view')
+    const gutter = document.getElementById('line-gutter')
+    if (docView && gutter) {
+      this.lineGutter = new LineGutterController(docView, gutter, previewEl)
+      this.lineGutter.setEnabled(config.formats.codeHighlight.lineNumbers)
+    }
     this.previewEl.addEventListener('click', (event) => {
       this.handlePreviewClick(event)
     })
@@ -106,6 +116,8 @@ export class PreviewController {
 
   setConfig(config: PresentationConfig): void {
     this.config = config
+    this.pipeline = createPipeline(config)
+    this.lineGutter?.setEnabled(config.formats.codeHighlight.lineNumbers)
     this.applyPresentationStyles()
     void this.loadHighlightTheme()
     if (this.path !== null) {
@@ -123,6 +135,7 @@ export class PreviewController {
     this.clearError()
     this.previewEl.innerHTML = ''
     this.previewEl.classList.remove('has-content')
+    this.lineGutter?.clear()
   }
 
   showError(message: string): void {
@@ -197,8 +210,7 @@ export class PreviewController {
   private async render(source: string, scrollHash?: string | null): Promise<void> {
     const token = ++this.renderToken
     try {
-      const pipeline = createPipeline(this.config)
-      const { html } = pipeline.render(source)
+      const { html } = this.pipeline.render(source, { documentPath: this.path })
       if (token !== this.renderToken) return
       this.previewEl.innerHTML = html
 
@@ -210,6 +222,7 @@ export class PreviewController {
       if (mermaidErrors.length > 0) {
         this.showError(`Mermaid: ${mermaidErrors[0]}`)
       }
+      this.lineGutter?.setSource(source)
       if (scrollHash) {
         // Defer until layout after mermaid
         requestAnimationFrame(() => this.scrollToHash(scrollHash))

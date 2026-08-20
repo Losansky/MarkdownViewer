@@ -1,11 +1,9 @@
+import { fileName, pathsEqual } from '../../shared/pathUtils'
+
 export interface TabState {
   path: string
   name: string
   content: string
-}
-
-function fileName(path: string): string {
-  return path.split(/[/\\]/).pop() ?? path
 }
 
 export class TabManager {
@@ -32,7 +30,7 @@ export class TabManager {
   }
 
   getTab(path: string): TabState | undefined {
-    return this.tabs.find((t) => t.path === path)
+    return this.tabs.find((t) => pathsEqual(t.path, path))
   }
 
   upsert(path: string, content: string, activate = true): TabState {
@@ -73,10 +71,10 @@ export class TabManager {
   }
 
   close(path: string): void {
-    const index = this.tabs.findIndex((t) => t.path === path)
+    const index = this.tabs.findIndex((t) => pathsEqual(t.path, path))
     if (index === -1) return
 
-    const wasActive = this.activePath === path
+    const wasActive = this.activePath !== null && pathsEqual(this.activePath, path)
     this.tabs.splice(index, 1)
     this.onClose(path)
 

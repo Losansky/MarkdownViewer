@@ -1,6 +1,6 @@
 /**
  * Headless smoke test: render samples/demo.md through markdown-it pipeline pieces
- * that do not require a DOM (no Mermaid run / KaTeX browser).
+ * that do not require a DOM (no Mermaid.run).
  */
 import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
@@ -22,7 +22,6 @@ const md = new MarkdownIt({
 md.use(taskLists, { enabled: true, label: true, labelAfter: true })
 md.use(multimdTable)
 
-// Mermaid fence → wrapper
 const fence = (config.formats.mermaid.fence || 'mermaid').toLowerCase()
 const defaultFence = md.renderer.rules.fence
 md.renderer.rules.fence = (tokens, idx, options, env, self) => {

@@ -11,7 +11,12 @@ import type {
   OpenEditorResult,
   OpenLinkResult,
   SearchHit,
-  AboutInfo
+  AboutInfo,
+  ConfigStatus,
+  SessionState,
+  FindOptions,
+  PathKind,
+  ExportPdfResult
 } from '../shared/types'
 
 const api: AppApi = {
@@ -28,18 +33,25 @@ const api: AppApi = {
     ipcRenderer.invoke('folder:refresh', rootPath) as Promise<OpenedFolderPayload | null>,
   openLink: (fromFile, href) =>
     ipcRenderer.invoke('file:openLink', fromFile, href) as Promise<OpenLinkResult>,
-  getConfig: () => ipcRenderer.invoke('config:get') as Promise<PresentationConfig>,
+  getConfig: () => ipcRenderer.invoke('config:get') as Promise<ConfigStatus>,
   getConfigPath: () => ipcRenderer.invoke('config:getPath') as Promise<string>,
   setTheme: (theme: ThemeName) =>
     ipcRenderer.invoke('config:setTheme', theme) as Promise<PresentationConfig>,
+  setLineNumbers: (enabled: boolean) =>
+    ipcRenderer.invoke('config:setLineNumbers', enabled) as Promise<PresentationConfig>,
   getRecents: () => ipcRenderer.invoke('recents:get') as Promise<RecentList>,
   clearRecents: () => ipcRenderer.invoke('recents:clear') as Promise<RecentList>,
+  getSession: () => ipcRenderer.invoke('session:get') as Promise<SessionState>,
+  saveSession: (state: SessionState) => ipcRenderer.invoke('session:save', state) as Promise<void>,
   openInEditor: (filePath: string, editorId?: string | null) =>
     ipcRenderer.invoke('editor:open', filePath, editorId) as Promise<OpenEditorResult>,
   showFileContextMenu: (filePath: string) =>
     ipcRenderer.invoke('file:contextMenu', filePath) as Promise<void>,
-  searchFolder: (rootPath: string, query: string) =>
-    ipcRenderer.invoke('search:folder', rootPath, query) as Promise<SearchHit[]>,
+  searchFolder: (rootPath: string, query: string, options?: FindOptions) =>
+    ipcRenderer.invoke('search:folder', rootPath, query, options) as Promise<SearchHit[]>,
+  print: () => ipcRenderer.invoke('app:print') as Promise<void>,
+  exportPdf: () => ipcRenderer.invoke('app:exportPdf') as Promise<ExportPdfResult>,
+  pathKind: (target: string) => ipcRenderer.invoke('path:kind', target) as Promise<PathKind>,
   getAbout: () => ipcRenderer.invoke('app:about') as Promise<AboutInfo>,
   onFileOpened: (callback) => {
     const listener = (_event: Electron.IpcRendererEvent, payload: OpenedFilePayload): void => {
@@ -56,8 +68,8 @@ const api: AppApi = {
     return () => ipcRenderer.removeListener('file:error', listener)
   },
   onConfigUpdated: (callback) => {
-    const listener = (_event: Electron.IpcRendererEvent, config: PresentationConfig): void => {
-      callback(config)
+    const listener = (_event: Electron.IpcRendererEvent, status: ConfigStatus): void => {
+      callback(status)
     }
     ipcRenderer.on('config:updated', listener)
     return () => ipcRenderer.removeListener('config:updated', listener)

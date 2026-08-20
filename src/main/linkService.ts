@@ -1,15 +1,16 @@
 import { existsSync } from 'fs'
-import { dirname, isAbsolute, normalize, resolve as pathResolve } from 'path'
-import { pathToFileURL, fileURLToPath } from 'url'
+import { normalize, resolve as pathResolve, dirname } from 'path'
+import { fileURLToPath, pathToFileURL } from 'url'
 import { BrowserWindow, dialog, shell } from 'electron'
 import type { FileService } from './fileService'
-import type { OpenedFilePayload, OpenLinkResult } from '../shared/types'
+import type { OpenLinkResult } from '../shared/types'
 import {
   isAllowedExternalHref,
   isDangerousHref,
   isMarkdownPath,
   isOsOpenablePath
 } from './security'
+import { splitHash } from '../shared/linkResolve'
 
 export type { OpenLinkResult }
 
@@ -21,29 +22,15 @@ function decodeHref(href: string): string {
   }
 }
 
-function splitHash(href: string): { pathPart: string; hash: string | null } {
-  const hashIndex = href.indexOf('#')
-  if (hashIndex === -1) return { pathPart: href, hash: null }
-  if (hashIndex === 0) return { pathPart: '', hash: href.slice(1) || null }
-  return {
-    pathPart: href.slice(0, hashIndex),
-    hash: href.slice(hashIndex + 1) || null
-  }
-}
-
 function isExternalHref(href: string): boolean {
   return isAllowedExternalHref(href)
 }
 
 /**
  * Resolve a markdown href relative to the document that contains the link.
- * e.g. from `.../exit-strategy/02-heros-journey.md` + `chapters/_index.md`
- *   → `.../exit-strategy/chapters/_index.md`
  */
 export function resolveLocalHref(fromFile: string, href: string): string {
   let raw = decodeHref(href.trim())
-
-  // Drop query string if present (unusual in md, but harmless)
   const q = raw.indexOf('?')
   if (q >= 0) raw = raw.slice(0, q)
 
@@ -55,12 +42,10 @@ export function resolveLocalHref(fromFile: string, href: string): string {
     }
   }
 
-  // Windows absolute: C:\... or C:/...
   if (/^[a-zA-Z]:[\\/]/.test(raw) || raw.startsWith('\\\\')) {
     return normalize(raw)
   }
 
-  // POSIX absolute (only when the source doc is not on Windows drive style)
   if (raw.startsWith('/') && !/^[a-zA-Z]:/.test(fromFile)) {
     return normalize(raw)
   }
@@ -69,10 +54,6 @@ export function resolveLocalHref(fromFile: string, href: string): string {
   return normalize(pathResolve(baseDir, raw))
 }
 
-/**
- * Open a link from a markdown preview: external, in-doc anchor, or local file.
- * Local markdown opens in the viewer; other files use the OS default app.
- */
 export async function openMarkdownLink(
   fileService: FileService,
   fromFile: string | null,
@@ -101,7 +82,6 @@ export async function openMarkdownLink(
 
   const { pathPart, hash } = splitHash(trimmed)
 
-  // Pure in-document anchor
   if (!pathPart) {
     return { kind: 'anchor', hash: hash ?? '' }
   }
@@ -180,9 +160,8 @@ async function confirmOsOpen(
   return result.response === 0
 }
 
-/** For tests / diagnostics */
 export function toFileUrl(filePath: string): string {
   return pathToFileURL(filePath).href
 }
 
-export type { OpenedFilePayload }
+

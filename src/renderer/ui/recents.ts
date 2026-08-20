@@ -1,8 +1,5 @@
 import type { RecentList } from '../../shared/types'
-
-function fileName(path: string): string {
-  return path.split(/[/\\]/).pop() ?? path
-}
+import { fileName } from '../../shared/pathUtils'
 
 export function hasRecents(list: RecentList): boolean {
   return list.files.length > 0 || list.folders.length > 0

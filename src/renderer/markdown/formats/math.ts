@@ -27,51 +27,6 @@ function escapeAttr(s: string): string {
   return escapeHtml(s).replace(/'/g, '&#39;')
 }
 
-/**
- * Simple delimiter-based math transform applied to the full source before markdown-it,
- * plus a fence handler for ```math blocks.
- */
-export function preprocessMath(source: string, config: MathFormatConfig): string {
-  if (!config.enabled) return source
-
-  let result = source
-
-  // Protect fenced code blocks from math substitution
-  const fences: string[] = []
-  result = result.replace(/```[\s\S]*?```/g, (match) => {
-    const i = fences.length
-    fences.push(match)
-    return `\u0000FENCE${i}\u0000`
-  })
-
-  // Inline code
-  const inlines: string[] = []
-  result = result.replace(/`[^`\n]+`/g, (match) => {
-    const i = inlines.length
-    inlines.push(match)
-    return `\u0000INLINE${i}\u0000`
-  })
-
-  for (const [open, close] of config.blockDelimiters) {
-    result = replaceDelimited(result, open, close, (tex) => {
-      const html = renderKatex(tex.trim(), true, config.throwOnError)
-      return `\n\n<div class="math-block">${html}</div>\n\n`
-    })
-  }
-
-  for (const [open, close] of config.inlineDelimiters) {
-    result = replaceDelimited(result, open, close, (tex) => {
-      const html = renderKatex(tex.trim(), false, config.throwOnError)
-      return `<span class="math-inline">${html}</span>`
-    })
-  }
-
-  result = result.replace(/\u0000INLINE(\d+)\u0000/g, (_, i) => inlines[Number(i)])
-  result = result.replace(/\u0000FENCE(\d+)\u0000/g, (_, i) => fences[Number(i)])
-
-  return result
-}
-
 function replaceDelimited(
   source: string,
   open: string,
@@ -189,8 +144,15 @@ export function preprocessMathWithPlaceholders(
 export function restoreMathPlaceholders(html: string, slots: string[]): string {
   // Prefer replacing a wrapping <p> when the slot is a block-level math element
   let result = html.replace(
-    new RegExp(`<p>\\s*${MATH_PLACEHOLDER_PREFIX}(\\d+)X\\s*</p>`, 'g'),
-    (_, i) => slots[Number(i)] ?? ''
+    new RegExp(`<p([^>]*)>\\s*${MATH_PLACEHOLDER_PREFIX}(\\d+)X\\s*</p>`, 'g'),
+    (_whole, attrs: string, i: string) => {
+      const slot = slots[Number(i)] ?? ''
+      const line = /data-source-line="(\d+)"/.exec(attrs)?.[1]
+      if (line && slot.startsWith('<') && !/\sdata-source-line=/.test(slot.slice(0, 120))) {
+        return slot.replace(/^<[a-zA-Z][\w:-]*/, (tag) => `${tag} data-source-line="${line}"`)
+      }
+      return slot
+    }
   )
   result = result.replace(new RegExp(`${MATH_PLACEHOLDER_PREFIX}(\\d+)X`, 'g'), (_, i) => {
     return slots[Number(i)] ?? ''

@@ -3,11 +3,15 @@
  * Multi-file scopes show a result list; Next/Prev walks hits and opens files.
  */
 
-import type { FindScope, SearchHit } from '../../shared/types'
+import type { FindOptions, FindScope, SearchHit } from '../../shared/types'
+import { collectTextHits, findRanges, searchDocuments, SEARCH_MAX_HITS } from '../../shared/search'
+import { fileName } from '../../shared/pathUtils'
+
+const FIND_OPTIONS_KEY = 'mdv-find-options'
 
 const HIGHLIGHT_CLASS = 'find-highlight'
 const CURRENT_CLASS = 'find-current'
-const MAX_HITS = 500
+const MAX_HITS = SEARCH_MAX_HITS
 
 export interface FindDocument {
   path: string
@@ -19,7 +23,7 @@ export interface FindBarHost {
   getPreviewRoot: () => HTMLElement | null
   getOpenDocuments: () => FindDocument[]
   getFolderRoot: () => string | null
-  searchFolder: (query: string) => Promise<SearchHit[]>
+  searchFolder: (query: string, options?: FindOptions) => Promise<SearchHit[]>
   openPath: (path: string) => Promise<void>
 }
 
@@ -34,6 +38,8 @@ export class FindBar {
   private searchGen = 0
   private pendingOccurrence: { path: string; occurrence: number } | null = null
   private debounceTimer: ReturnType<typeof setTimeout> | null = null
+  private findOptions: FindOptions = { caseSensitive: false, wholeWord: false, regex: false }
+  private invalidRegex = false
 
   private readonly root: HTMLElement
   private readonly input: HTMLInputElement
@@ -102,13 +108,24 @@ export class FindBar {
 
     row.append(this.input, scopes, this.countEl, this.prevBtn, this.nextBtn, this.closeBtn)
 
+    const optionRow = document.createElement('div')
+    optionRow.className = 'find-options'
+    optionRow.setAttribute('role', 'group')
+    optionRow.setAttribute('aria-label', 'Find options')
+    this.loadFindOptions()
+    optionRow.append(
+      this.makeOptionToggle('caseSensitive', 'Aa', 'Match case'),
+      this.makeOptionToggle('wholeWord', 'W', 'Whole word'),
+      this.makeOptionToggle('regex', '.*', 'Regular expression')
+    )
+
     this.resultsEl = document.createElement('div')
     this.resultsEl.id = 'find-results'
     this.resultsEl.hidden = true
     this.resultsEl.setAttribute('role', 'listbox')
     this.resultsEl.setAttribute('aria-label', 'Find results')
 
-    this.root.append(row, this.resultsEl)
+    this.root.append(row, optionRow, this.resultsEl)
     this.hostEl.prepend(this.root)
 
     this.input.addEventListener('input', () => {
@@ -228,6 +245,61 @@ export class FindBar {
     void this.activateHit(next)
   }
 
+  private makeOptionToggle(
+    key: keyof FindOptions,
+    label: string,
+    title: string
+  ): HTMLButtonElement {
+    const btn = document.createElement('button')
+    btn.type = 'button'
+    btn.className = 'find-option'
+    btn.textContent = label
+    btn.title = title
+    btn.setAttribute('aria-pressed', String(this.findOptions[key]))
+    btn.classList.toggle('active', this.findOptions[key])
+    btn.addEventListener('click', () => {
+      this.findOptions[key] = !this.findOptions[key]
+      btn.setAttribute('aria-pressed', String(this.findOptions[key]))
+      btn.classList.toggle('active', this.findOptions[key])
+      this.saveFindOptions()
+      void this.runSearch({ selectFirst: true })
+    })
+    return btn
+  }
+
+  private loadFindOptions(): void {
+    try {
+      const raw = localStorage.getItem(FIND_OPTIONS_KEY)
+      if (!raw) return
+      const parsed = JSON.parse(raw) as Partial<FindOptions>
+      this.findOptions = {
+        caseSensitive: Boolean(parsed.caseSensitive),
+        wholeWord: Boolean(parsed.wholeWord),
+        regex: Boolean(parsed.regex)
+      }
+    } catch {
+      // keep defaults
+    }
+  }
+
+  private saveFindOptions(): void {
+    try {
+      localStorage.setItem(FIND_OPTIONS_KEY, JSON.stringify(this.findOptions))
+    } catch {
+      // ignore quota / private mode
+    }
+  }
+
+  private highlightQuery(root: HTMLElement, query: string): HTMLElement[] {
+    this.invalidRegex = false
+    const rangesOrError = findRanges('\n', query, this.findOptions)
+    if (rangesOrError === 'invalid-regex') {
+      this.invalidRegex = true
+      return []
+    }
+    return highlightMatches(root, query, this.findOptions)
+  }
+
   private makeScopeButton(scope: FindScope, label: string): HTMLButtonElement {
     const btn = document.createElement('button')
     btn.type = 'button'
@@ -300,9 +372,9 @@ export class FindBar {
 
     let hits: SearchHit[] = []
     if (this.scope === 'open-files') {
-      hits = searchDocuments(this.host.getOpenDocuments(), q)
+      hits = searchDocuments(this.host.getOpenDocuments(), q, this.findOptions)
     } else {
-      hits = await this.host.searchFolder(q)
+      hits = await this.host.searchFolder(q, this.findOptions)
     }
     if (gen !== this.searchGen) return
 
@@ -328,7 +400,11 @@ export class FindBar {
       return
     }
 
-    this.matches = highlightMatches(root, q)
+    this.matches = this.highlightQuery(root, q)
+    if (this.invalidRegex) {
+      this.updateCount()
+      return
+    }
     if (this.matches.length > 0 && options.selectFirst) {
       this.setCurrent(0)
     } else {
@@ -358,7 +434,7 @@ export class FindBar {
     this.currentIndex = -1
     const q = this.input.value.trim()
     if (!root || !q) return
-    this.matches = highlightMatches(root, q)
+    this.matches = this.highlightQuery(root, q)
   }
 
   private setPreviewOccurrence(occurrence: number): void {
@@ -449,6 +525,10 @@ export class FindBar {
       this.countEl.textContent = ''
       return
     }
+    if (this.invalidRegex) {
+      this.countEl.textContent = 'Invalid regex'
+      return
+    }
     if (this.scope === 'current') {
       if (this.matches.length === 0) {
         this.countEl.textContent = 'No results'
@@ -472,45 +552,7 @@ export class FindBar {
   }
 }
 
-export function searchDocuments(docs: FindDocument[], query: string): SearchHit[] {
-  const hits: SearchHit[] = []
-  for (const doc of docs) {
-    collectHits(doc.path, doc.content, query, hits)
-    if (hits.length >= MAX_HITS) break
-  }
-  return hits
-}
-
-export function collectHits(
-  path: string,
-  content: string,
-  query: string,
-  into: SearchHit[] = []
-): SearchHit[] {
-  const q = query.trim()
-  if (!q) return into
-  const lowerQuery = q.toLowerCase()
-  const lines = content.split(/\r?\n/)
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    const lower = line.toLowerCase()
-    let start = 0
-    while (start < line.length) {
-      const idx = lower.indexOf(lowerQuery, start)
-      if (idx === -1) break
-      into.push({
-        path,
-        line: i + 1,
-        column: idx + 1,
-        length: q.length,
-        snippet: makeSnippet(line, idx, q.length)
-      })
-      if (into.length >= MAX_HITS) return into
-      start = idx + q.length
-    }
-  }
-  return into
-}
+export { searchDocuments, collectTextHits as collectHits }
 
 function occurrenceInFile(hits: SearchHit[], index: number): number {
   const target = hits[index]
@@ -522,22 +564,11 @@ function occurrenceInFile(hits: SearchHit[], index: number): number {
   return occurrence
 }
 
-function fileName(path: string): string {
-  return path.split(/[/\\]/).pop() ?? path
-}
-
-function makeSnippet(line: string, index: number, length: number): string {
-  const pad = 36
-  const start = Math.max(0, index - pad)
-  const end = Math.min(line.length, index + length + pad)
-  let snippet = line.slice(start, end).replace(/\s+/g, ' ')
-  if (start > 0) snippet = `…${snippet}`
-  if (end < line.length) snippet = `${snippet}…`
-  return snippet
-}
-
-function highlightMatches(root: HTMLElement, query: string): HTMLElement[] {
-  const lowerQuery = query.toLowerCase()
+function highlightMatches(
+  root: HTMLElement,
+  query: string,
+  options: FindOptions
+): HTMLElement[] {
   const marks: HTMLElement[] = []
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
     acceptNode(node) {
@@ -547,9 +578,9 @@ function highlightMatches(root: HTMLElement, query: string): HTMLElement[] {
         return NodeFilter.FILTER_REJECT
       }
       const text = node.textContent ?? ''
-      if (!text || !text.toLowerCase().includes(lowerQuery)) {
-        return NodeFilter.FILTER_REJECT
-      }
+      if (!text) return NodeFilter.FILTER_REJECT
+      const ranges = findRanges(text, query, options)
+      if (ranges === 'invalid-regex' || ranges.length === 0) return NodeFilter.FILTER_REJECT
       return NodeFilter.FILTER_ACCEPT
     }
   })
@@ -563,24 +594,21 @@ function highlightMatches(root: HTMLElement, query: string): HTMLElement[] {
 
   for (const textNode of textNodes) {
     const text = textNode.textContent ?? ''
-    const lower = text.toLowerCase()
+    const ranges = findRanges(text, query, options)
+    if (ranges === 'invalid-regex' || ranges.length === 0) continue
     const parts: Array<string | HTMLElement> = []
     let cursor = 0
-    let start = 0
 
-    while (start < text.length) {
-      const idx = lower.indexOf(lowerQuery, start)
-      if (idx === -1) break
-      if (idx > cursor) {
-        parts.push(text.slice(cursor, idx))
+    for (const range of ranges) {
+      if (range.index > cursor) {
+        parts.push(text.slice(cursor, range.index))
       }
       const mark = document.createElement('mark')
       mark.className = HIGHLIGHT_CLASS
-      mark.textContent = text.slice(idx, idx + query.trim().length)
+      mark.textContent = text.slice(range.index, range.index + range.length)
       parts.push(mark)
       marks.push(mark)
-      cursor = idx + query.trim().length
-      start = cursor
+      cursor = range.index + range.length
     }
     if (cursor < text.length) {
       parts.push(text.slice(cursor))

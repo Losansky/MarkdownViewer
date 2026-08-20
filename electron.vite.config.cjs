@@ -4,6 +4,11 @@ const { defineConfig, externalizeDepsPlugin } = require('electron-vite')
 module.exports = defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
+    resolve: {
+      alias: {
+        '@shared': resolve(__dirname, 'src/shared')
+      }
+    },
     build: {
       rollupOptions: {
         input: {
@@ -14,6 +19,11 @@ module.exports = defineConfig({
   },
   preload: {
     plugins: [externalizeDepsPlugin()],
+    resolve: {
+      alias: {
+        '@shared': resolve(__dirname, 'src/shared')
+      }
+    },
     build: {
       rollupOptions: {
         input: {

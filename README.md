@@ -40,6 +40,7 @@ Then use the menu **File → Open Folder…** (or **Open File…** / `Ctrl+O`) a
 | `npm start` | Run the production build (after `build`) |
 | `npm run test:security` | Security helper unit checks |
 | `npm run test:tree` | Explorer tree unit checks (hidden folders, skip list) |
+| `npm run test:unit` | Shared search, path, math, and config-schema checks |
 | `npm run smoke` | Headless Markdown pipeline smoke test |
 | `npm run dist` | Build the Windows installer and portable exe into `release/` |
 
@@ -50,16 +51,20 @@ Then use the menu **File → Open Folder…** (or **Open File…** / `Ctrl+O`) a
 - **Dark mode** theme (`View → Theme`, or `Ctrl+Shift+D`)
 - **Recent files & folders** (persisted under userData; welcome screen + sidebar + menu)
 - **Left sidebar** explorer: folder tree of Markdown files, including hidden folders such as `.kiro` and `.grok`
-- **Tabs** for multiple open documents (middle-click or × to close)
+- **Tabs** for multiple open documents (middle-click or × to close); last session is restored on launch
 - **Relative links** resolve against the open file (e.g. `chapters/_index.md` opens that path in a tab)
 - GFM-style Markdown (tables, task lists, strikethrough, autolinks)
 - **Mermaid** fenced blocks (` ```mermaid `)
 - **Math** via KaTeX (`$…$`, `$$…$$`, ` ```math `)
-- **Syntax highlighting** (highlight.js)
+- **Syntax highlighting** (highlight.js), with optional line numbers in code fences
 - **GitHub-style admonitions** (`> [!NOTE]`, etc.)
 - Live **file watch** (preview updates when an open file changes on disk)
 - Folder tree starts **collapsed**; **+ / −** in the explorer header expands or collapses all folders
-- **Find** (`Ctrl+F`) in the current file, all open files, or the open folder
+- **Table of contents** (`View` / `Options`, `Ctrl+Shift+T`) from headings in the open file
+- **Find** (`Ctrl+F`) in the current file, all open files, or the open folder, with match-case / whole-word / regex
+- **Options** menu: show/hide a left line-number bar on the document (`Ctrl+L`)
+- Drag and drop Markdown files or folders onto the window
+- **Print** and **Export PDF**
 - **Help → About** with app version and a scrollable SBOM (packages + CycloneDX JSON)
 - User **presentation.json** with schema; changes reload live when the config file is saved
 
@@ -192,14 +197,15 @@ Version lives in `package.json`. CI runs typecheck, security checks, smoke, and 
 
 To publish a new Windows build:
 
-1. Bump `"version"` in `package.json` (for example `1.1.4`).
-2. Commit the change to `main`.
-3. Tag and push:
+1. Bump `"version"` in `package.json` (for example `1.1.5`).
+2. Update `CHANGELOG.md` and `RELEASE_NOTES.md`.
+3. Commit the change to `main`.
+4. Tag and push:
 
 ```bash
-git tag v1.1.4
+git tag v1.1.5
 git push origin main
-git push origin v1.1.4
+git push origin v1.1.5
 ```
 
 Pushing a `v*` tag runs [.github/workflows/release.yml](.github/workflows/release.yml), which builds the installer and portable exe and attaches them to a GitHub Release.

@@ -1,15 +1,18 @@
-import { app, BrowserWindow, ipcMain, Menu, shell } from 'electron'
-import { existsSync } from 'fs'
-import { basename, join } from 'path'
+import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from 'electron'
+import { existsSync, statSync, writeFileSync } from 'fs'
+import { basename, dirname, join } from 'path'
 import { ConfigService } from './configService'
 import { FileService } from './fileService'
 import { RecentService } from './recentService'
+import { SessionService } from './sessionService'
+import { isMarkdownPath } from './security'
 import {
   openInExternalEditor,
   resolveDefaultEditor
 } from './editorService'
 import { openMarkdownLink } from './linkService'
 import { getAboutInfo } from './aboutService'
+import { pdfExportFileName } from '../shared/pathUtils'
 import type {
   OpenedFilePayload,
   FileErrorPayload,
@@ -22,13 +25,19 @@ import type {
   EditorsConfig,
   OpenLinkResult,
   SearchHit,
-  AboutInfo
+  AboutInfo,
+  ConfigStatus,
+  SessionState,
+  FindOptions,
+  PathKind,
+  ExportPdfResult
 } from '../shared/types'
 
 let mainWindow: BrowserWindow | null = null
 let configService: ConfigService
 let fileService: FileService
 let recentService: RecentService
+let sessionService: SessionService
 
 const DARK_BG = '#0d1117'
 const LIGHT_BG = '#ffffff'
@@ -74,7 +83,8 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true
+      sandbox: true,
+      webSecurity: true
     }
   })
 
@@ -93,6 +103,8 @@ function createWindow(): void {
   // Keep the viewer document stable: never navigate the renderer to link targets.
   // Relative .md links are handled in the preview click handler instead.
   mainWindow.webContents.on('will-navigate', (event, url) => {
+    const devUrl = process.env.ELECTRON_RENDERER_URL
+    if (devUrl && url.startsWith(devUrl)) return
     event.preventDefault()
     if (url.startsWith('http:') || url.startsWith('https:')) {
       void shell.openExternal(url)
@@ -118,6 +130,12 @@ function recentMenuLabel(path: string): string {
   const name = basename(path) || path
   if (name.length >= path.length) return path
   return `${name}  —  ${path}`
+}
+
+function defaultPdfSavePath(filePath: string | null): string {
+  const name = pdfExportFileName(filePath)
+  if (!filePath) return name
+  return join(dirname(filePath), name)
 }
 
 async function openEditorForPath(
@@ -295,6 +313,8 @@ function buildMenu(): void {
   const activePath = fileService?.getLastActivePath() ?? null
   const hasActiveFile = Boolean(activePath)
   const theme = configService.getConfig().presentation.theme
+  const lineNumbersOn = Boolean(configService.getConfig().formats.codeHighlight.lineNumbers)
+  const tocVisible = Boolean(sessionService?.get()?.tocVisible)
   const defaultEditor = resolveDefaultEditor(getEditors())
 
   const template: Electron.MenuItemConstructorOptions[] = [
@@ -354,7 +374,23 @@ function buildMenu(): void {
           label: 'Reload',
           accelerator: 'CmdOrCtrl+R',
           click: () => {
-            fileService.reload()
+            sendCommand('reload')
+          }
+        },
+        {
+          label: 'Print…',
+          accelerator: 'CmdOrCtrl+P',
+          enabled: hasActiveFile,
+          click: () => {
+            sendCommand('print')
+          }
+        },
+        {
+          label: 'Export PDF…',
+          accelerator: 'CmdOrCtrl+Shift+P',
+          enabled: hasActiveFile,
+          click: () => {
+            sendCommand('export-pdf')
           }
         },
         {
@@ -433,6 +469,12 @@ function buildMenu(): void {
             sendCommand('toggle-sidebar')
           }
         },
+        {
+          label: 'Table of Contents',
+          click: () => {
+            sendCommand('toggle-toc')
+          }
+        },
         { type: 'separator' },
         {
           label: 'Theme',
@@ -475,6 +517,35 @@ function buildMenu(): void {
         { role: 'zoomOut' },
         { type: 'separator' },
         { role: 'togglefullscreen' }
+      ]
+    },
+    {
+      label: 'Options',
+      submenu: [
+        {
+          label: lineNumbersOn ? 'Hide line numbers' : 'Show line numbers',
+          accelerator: 'CmdOrCtrl+L',
+          registerAccelerator: false,
+          click: () => {
+            sendCommand('toggle-line-numbers')
+          }
+        },
+        {
+          label: tocVisible ? 'Hide table of contents' : 'Show table of contents',
+          accelerator: 'CmdOrCtrl+Shift+T',
+          registerAccelerator: false,
+          click: () => {
+            sendCommand('toggle-toc')
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Open presentation config…',
+          click: () => {
+            configService.ensureUserConfig()
+            shell.showItemInFolder(configService.getUserConfigPath())
+          }
+        }
       ]
     },
     {
@@ -572,9 +643,74 @@ function registerIpc(): void {
     }
   )
 
-  ipcMain.handle('config:get', async (event): Promise<PresentationConfig> => {
+  ipcMain.handle('config:get', async (event): Promise<ConfigStatus> => {
+    if (!isTrustedSender(event)) {
+      return { config: configService.getConfig(), warning: null }
+    }
+    return configService.getStatus()
+  })
+
+  ipcMain.handle('config:setLineNumbers', async (event, enabled: boolean) => {
     if (!isTrustedSender(event)) return configService.getConfig()
-    return configService.getConfig()
+    return configService.setLineNumbers(Boolean(enabled))
+  })
+
+  ipcMain.handle('session:get', async (event): Promise<SessionState> => {
+    if (!isTrustedSender(event)) return { tabs: [], activePath: null, folderRoot: null }
+    return sessionService.load()
+  })
+
+  ipcMain.handle('session:save', async (event, state: SessionState) => {
+    if (!isTrustedSender(event)) return
+    if (!state || typeof state !== 'object') return
+    sessionService.save({
+      tabs: Array.isArray(state.tabs) ? state.tabs.filter((p) => typeof p === 'string') : [],
+      activePath: typeof state.activePath === 'string' ? state.activePath : null,
+      folderRoot: typeof state.folderRoot === 'string' ? state.folderRoot : null,
+      tocVisible: Boolean(state.tocVisible)
+    })
+    buildMenu()
+  })
+
+  ipcMain.handle('app:print', async (event) => {
+    if (!isTrustedSender(event)) return
+    const win = mainWindow
+    if (!win || win.isDestroyed()) return
+    win.webContents.print({})
+  })
+
+  ipcMain.handle('app:exportPdf', async (event): Promise<ExportPdfResult> => {
+    if (!isTrustedSender(event)) return { ok: false, message: 'Untrusted sender.' }
+    const win = mainWindow
+    if (!win || win.isDestroyed()) return { ok: false, message: 'No window to export.' }
+    const result = await dialog.showSaveDialog(win, {
+      title: 'Export PDF',
+      defaultPath: defaultPdfSavePath(fileService.getLastActivePath()),
+      filters: [{ name: 'PDF', extensions: ['pdf'] }]
+    })
+    if (result.canceled || !result.filePath) return { ok: false, message: 'Export cancelled.' }
+    try {
+      const data = await win.webContents.printToPDF({
+        printBackground: true,
+        preferCSSPageSize: true
+      })
+      writeFileSync(result.filePath, data)
+      return { ok: true, path: result.filePath }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      return { ok: false, message }
+    }
+  })
+
+  ipcMain.handle('path:kind', async (event, target: string): Promise<PathKind> => {
+    if (!isTrustedSender(event)) return 'missing'
+    if (typeof target !== 'string' || !target) return 'missing'
+    try {
+      if (!existsSync(target)) return 'missing'
+      return statSync(target).isDirectory() ? 'directory' : 'file'
+    } catch {
+      return 'missing'
+    }
   })
 
   ipcMain.handle('config:getPath', async (event): Promise<string> => {
@@ -629,11 +765,11 @@ function registerIpc(): void {
 
   ipcMain.handle(
     'search:folder',
-    async (event, rootPath: string, query: string): Promise<SearchHit[]> => {
+    async (event, rootPath: string, query: string, options?: FindOptions): Promise<SearchHit[]> => {
       if (!isTrustedSender(event)) return []
       if (typeof rootPath !== 'string' || !rootPath) return []
       if (typeof query !== 'string' || !query.trim()) return []
-      return fileService.searchFolder(rootPath, query)
+      return fileService.searchFolder(rootPath, query, options)
     }
   )
 
@@ -645,15 +781,57 @@ function registerIpc(): void {
   })
 }
 
+function collectOpenTargets(argv: string[]): { files: string[]; folders: string[] } {
+  const files: string[] = []
+  const folders: string[] = []
+  for (const arg of argv) {
+    if (!arg || arg.startsWith('-') || arg === '.') continue
+    if (arg === process.execPath) continue
+    try {
+      if (!existsSync(arg)) continue
+      const stat = statSync(arg)
+      if (stat.isDirectory()) folders.push(arg)
+      else if (isMarkdownPath(arg)) files.push(arg)
+    } catch {
+      // skip
+    }
+  }
+  return { files, folders }
+}
+
+function openArgvTargets(argv: string[]): void {
+  const { files, folders } = collectOpenTargets(argv)
+  for (const folder of folders) {
+    fileService.openFolder(folder)
+  }
+  for (const file of files) {
+    fileService.openPath(file)
+  }
+}
+
+const gotSingleInstanceLock = app.requestSingleInstanceLock()
+if (!gotSingleInstanceLock) {
+  app.quit()
+} else {
+app.on('second-instance', (_event, argv) => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.focus()
+  }
+  if (fileService) openArgvTargets(argv)
+})
+
 app.whenReady().then(() => {
   configService = new ConfigService()
   configService.ensureUserConfig()
-  configService.setOnChange((config) => {
-    applyWindowTheme(config.presentation.theme)
+  configService.setOnChange((status) => {
+    applyWindowTheme(status.config.presentation.theme)
     buildMenu()
-    sendToRenderer('config:updated', config)
+    sendToRenderer('config:updated', status)
   })
   configService.startWatching()
+
+  sessionService = new SessionService()
 
   recentService = new RecentService()
   recentService.setOnChange((list) => {
@@ -678,11 +856,13 @@ app.whenReady().then(() => {
   registerIpc()
   buildMenu()
   createWindow()
+  openArgvTargets(process.argv)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })
+}
 
 app.on('window-all-closed', () => {
   fileService?.dispose()

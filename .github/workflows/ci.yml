@@ -31,6 +31,9 @@ jobs:
       - name: Tree checks
         run: npm run test:tree
 
+      - name: Unit checks
+        run: npm run test:unit
+
       - name: Smoke render
         run: npm run smoke
 

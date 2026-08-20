@@ -1,8 +1,9 @@
 import { app } from 'electron'
 import { existsSync, mkdirSync, readFileSync, writeFileSync, watch, type FSWatcher } from 'fs'
 import { join, dirname } from 'path'
-import type { PresentationConfig, ThemeName } from '../shared/types'
+import type { PresentationConfig, ThemeName, ConfigStatus } from '../shared/types'
 import { clampPresentationConfig, deepMerge } from './security'
+import { validatePresentationConfig } from './configValidation'
 
 function allowRawHtml(): boolean {
   return process.env.MDV_ALLOW_HTML === '1' && !app.isPackaged
@@ -19,15 +20,24 @@ function isObject(value: unknown): value is Record<string, unknown> {
 
 export class ConfigService {
   private config: PresentationConfig
+  private warning: string | null = null
   private userConfigPath: string
   private defaultConfigPath: string
+  private schemaPath: string
   private watcher: FSWatcher | null = null
-  private onChange: ((config: PresentationConfig) => void) | null = null
+  private onChange: ((status: ConfigStatus) => void) | null = null
 
   constructor() {
-    this.defaultConfigPath = this.resolveDefaultConfigPath()
+    this.defaultConfigPath = this.resolveDefaultConfigPath('presentation.default.json')
+    this.schemaPath = this.resolveDefaultConfigPath('presentation.schema.json')
     this.userConfigPath = join(app.getPath('userData'), 'presentation.json')
-    this.config = this.load()
+    const loaded = this.load()
+    this.config = loaded.config
+    this.warning = loaded.warning
+  }
+
+  getStatus(): ConfigStatus {
+    return { config: this.config, warning: this.warning }
   }
 
   getConfig(): PresentationConfig {
@@ -42,8 +52,12 @@ export class ConfigService {
     return this.defaultConfigPath
   }
 
-  setOnChange(handler: (config: PresentationConfig) => void): void {
+  setOnChange(handler: (status: ConfigStatus) => void): void {
     this.onChange = handler
+  }
+
+  private notify(): void {
+    this.onChange?.(this.getStatus())
   }
 
   ensureUserConfig(): void {
@@ -56,41 +70,49 @@ export class ConfigService {
     writeFileSync(this.userConfigPath, defaults, 'utf-8')
   }
 
-  /**
-   * Persist presentation.theme to the user config and notify listeners.
-   * Merges into the existing user JSON so other customizations are kept.
-   */
-  setTheme(theme: ThemeName): PresentationConfig {
+  private mergeUserJsonField(
+    mutator: (userRaw: Record<string, unknown>) => void
+  ): PresentationConfig {
     this.ensureUserConfig()
     let userRaw: Record<string, unknown> = {}
     try {
       const parsed = readJsonFile(this.userConfigPath)
-      if (isObject(parsed)) {
-        userRaw = parsed
-      }
+      if (isObject(parsed)) userRaw = parsed
     } catch {
-      // rewrite from current effective config presentation section
+      // rewrite below
     }
-
-    const presentation = isObject(userRaw.presentation)
-      ? { ...userRaw.presentation }
-      : {}
-    presentation.theme = theme
-    userRaw.presentation = presentation
-
+    mutator(userRaw)
     if (!userRaw.$schema) {
       userRaw.$schema = './presentation.schema.json'
     }
-
     const dir = dirname(this.userConfigPath)
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true })
-    }
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
     writeFileSync(this.userConfigPath, JSON.stringify(userRaw, null, 2) + '\n', 'utf-8')
-
-    this.config = this.load()
-    this.onChange?.(this.config)
+    const loaded = this.load()
+    this.config = loaded.config
+    this.warning = loaded.warning
+    this.notify()
     return this.config
+  }
+
+  setTheme(theme: ThemeName): PresentationConfig {
+    return this.mergeUserJsonField((userRaw) => {
+      const presentation = isObject(userRaw.presentation) ? { ...userRaw.presentation } : {}
+      presentation.theme = theme
+      userRaw.presentation = presentation
+    })
+  }
+
+  setLineNumbers(enabled: boolean): PresentationConfig {
+    return this.mergeUserJsonField((userRaw) => {
+      const formats = isObject(userRaw.formats) ? { ...userRaw.formats } : {}
+      const codeHighlight = isObject(formats.codeHighlight)
+        ? { ...formats.codeHighlight }
+        : {}
+      codeHighlight.lineNumbers = enabled
+      formats.codeHighlight = codeHighlight
+      userRaw.formats = formats
+    })
   }
 
   startWatching(): void {
@@ -103,8 +125,10 @@ export class ConfigService {
         if (debounce) clearTimeout(debounce)
         debounce = setTimeout(() => {
           try {
-            this.config = this.load()
-            this.onChange?.(this.config)
+            const loaded = this.load()
+            this.config = loaded.config
+            this.warning = loaded.warning
+            this.notify()
           } catch (err) {
             console.warn('Failed to reload presentation config:', err)
           }
@@ -120,38 +144,46 @@ export class ConfigService {
     this.watcher = null
   }
 
-  private resolveDefaultConfigPath(): string {
-    // Packaged: extraResources → resources/config
-    // Dev: project root/config (cwd, app path, relative to out/main)
+  private resolveDefaultConfigPath(fileName: string): string {
     const candidates = [
-      join(process.resourcesPath, 'config', 'presentation.default.json'),
-      join(app.getAppPath(), 'config', 'presentation.default.json'),
-      join(process.cwd(), 'config', 'presentation.default.json'),
-      join(__dirname, '../../config/presentation.default.json'),
-      join(__dirname, '../../../config/presentation.default.json')
+      join(process.resourcesPath, 'config', fileName),
+      join(app.getAppPath(), 'config', fileName),
+      join(process.cwd(), 'config', fileName),
+      join(__dirname, '../../config', fileName),
+      join(__dirname, '../../../config', fileName)
     ]
     for (const path of candidates) {
       if (existsSync(path)) return path
     }
-    throw new Error(
-      `Could not find presentation.default.json. Searched:\n${candidates.join('\n')}`
-    )
+    throw new Error(`Could not find ${fileName}. Searched:\n${candidates.join('\n')}`)
   }
 
-  private load(): PresentationConfig {
+  private load(): { config: PresentationConfig; warning: string | null } {
     const defaults = readJsonFile(this.defaultConfigPath) as PresentationConfig
+    let warning: string | null = null
 
     if (!existsSync(this.userConfigPath)) {
-      return clampPresentationConfig(defaults, { allowHtml: allowRawHtml() })
+      return {
+        config: clampPresentationConfig(defaults, { allowHtml: allowRawHtml() }),
+        warning: null
+      }
     }
 
     try {
       const userRaw = readJsonFile(this.userConfigPath)
       if (!isObject(userRaw)) {
-        console.warn('User presentation.json is not an object; using defaults')
-        return defaults
+        warning = 'User presentation.json is not an object; using defaults.'
+        return {
+          config: clampPresentationConfig(defaults, { allowHtml: allowRawHtml() }),
+          warning
+        }
       }
-      // Strip schema metadata before merge
+
+      const validation = validatePresentationConfig(userRaw, this.schemaPath)
+      if (!validation.valid) {
+        warning = validation.message
+      }
+
       const { $schema: _schema, ...userConfig } = userRaw as Record<string, unknown> & {
         $schema?: string
       }
@@ -159,10 +191,19 @@ export class ConfigService {
         defaults as unknown as Record<string, unknown>,
         userConfig
       ) as unknown as PresentationConfig
-      return clampPresentationConfig(merged, { allowHtml: allowRawHtml() })
+      return {
+        config: clampPresentationConfig(merged, { allowHtml: allowRawHtml() }),
+        warning
+      }
     } catch (err) {
-      console.warn('Invalid user presentation.json; falling back to defaults:', err)
-      return clampPresentationConfig(defaults, { allowHtml: allowRawHtml() })
+      warning =
+        err instanceof Error
+          ? `Invalid user presentation.json: ${err.message}`
+          : 'Invalid user presentation.json; using defaults.'
+      return {
+        config: clampPresentationConfig(defaults, { allowHtml: allowRawHtml() }),
+        warning
+      }
     }
   }
 }

@@ -40,10 +40,19 @@
       <div id="workspace">
         <div id="tab-bar" role="tablist" aria-label="Open files"></div>
         <div id="error-banner" hidden></div>
-        <main id="main">
-          <article id="preview"></article>
-          <div id="welcome" hidden></div>
-        </main>
+        <div id="document-row">
+          <main id="main">
+            <div id="doc-view">
+              <aside id="line-gutter" aria-hidden="true" aria-label="Line numbers"></aside>
+              <article id="preview"></article>
+            </div>
+            <div id="welcome" hidden></div>
+          </main>
+          <aside id="toc" hidden aria-label="Table of contents">
+            <div id="toc-header">Contents</div>
+            <nav id="toc-list"></nav>
+          </aside>
+        </div>
       </div>
     </div>
     <script type="module" src="./main.ts"></script>

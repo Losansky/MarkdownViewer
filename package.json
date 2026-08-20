@@ -1,6 +1,6 @@
 {
   "name": "markdown-viewer",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "Windows Markdown document viewer with Mermaid and configurable presentation",
   "main": "./out/main/index.js",
   "author": "Losansky",
@@ -21,9 +21,10 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
-    "smoke": "node scripts/smoke-render.mjs",
+    "smoke": "node scripts/run-smoke.mjs",
     "test:security": "node --experimental-strip-types scripts/security-checks.mts",
     "test:tree": "node --experimental-strip-types scripts/tree-checks.mts",
+    "test:unit": "node --experimental-strip-types scripts/unit-checks.mts",
     "sbom": "node scripts/generate-sbom.mjs",
     "start": "electron-vite preview",
     "icon": "node scripts/make-icon.mjs",
@@ -77,6 +78,20 @@
       {
         "from": "build/sbom.json",
         "to": "sbom.json"
+      }
+    ],
+    "fileAssociations": [
+      {
+        "ext": "md",
+        "name": "Markdown File",
+        "description": "Markdown Document",
+        "role": "Viewer"
+      },
+      {
+        "ext": "markdown",
+        "name": "Markdown File",
+        "description": "Markdown Document",
+        "role": "Viewer"
       }
     ],
     "win": {
