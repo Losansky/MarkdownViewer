@@ -13,10 +13,10 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -29,6 +29,9 @@ jobs:
 
       - name: Security checks
         run: npm run test:security
+
+      - name: Tree checks
+        run: npm run test:tree
 
       - name: Build Windows installer
         run: npm run dist

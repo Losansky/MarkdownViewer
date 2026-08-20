@@ -39,6 +39,7 @@ Then use the menu **File → Open Folder…** (or **Open File…** / `Ctrl+O`) a
 | `npm run sbom` | Generate `build/sbom.json` (CycloneDX, used by Help → About) |
 | `npm start` | Run the production build (after `build`) |
 | `npm run test:security` | Security helper unit checks |
+| `npm run test:tree` | Explorer tree unit checks (hidden folders, skip list) |
 | `npm run smoke` | Headless Markdown pipeline smoke test |
 | `npm run dist` | Build the Windows installer and portable exe into `release/` |
 
@@ -48,7 +49,7 @@ Then use the menu **File → Open Folder…** (or **Open File…** / `Ctrl+O`) a
 - **Open in external editor** (configured editors + default; File menu and context menus)
 - **Dark mode** theme (`View → Theme`, or `Ctrl+Shift+D`)
 - **Recent files & folders** (persisted under userData; welcome screen + sidebar + menu)
-- **Left sidebar** explorer: folder tree of Markdown files only
+- **Left sidebar** explorer: folder tree of Markdown files, including hidden folders such as `.kiro` and `.grok`
 - **Tabs** for multiple open documents (middle-click or × to close)
 - **Relative links** resolve against the open file (e.g. `chapters/_index.md` opens that path in a tab)
 - GFM-style Markdown (tables, task lists, strikethrough, autolinks)

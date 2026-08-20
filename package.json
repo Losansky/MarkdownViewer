@@ -23,11 +23,12 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "smoke": "node scripts/smoke-render.mjs",
     "test:security": "node --experimental-strip-types scripts/security-checks.mts",
+    "test:tree": "node --experimental-strip-types scripts/tree-checks.mts",
     "sbom": "node scripts/generate-sbom.mjs",
     "start": "electron-vite preview",
     "icon": "node scripts/make-icon.mjs",
-    "dist": "npm run sbom && npm run build && electron-builder --win",
-    "dist:dir": "npm run sbom && npm run build && electron-builder --win --dir"
+    "dist": "npm run sbom && npm run build && electron-builder --win --publish never",
+    "dist:dir": "npm run sbom && npm run build && electron-builder --win --dir --publish never"
   },
   "dependencies": {
     "highlight.js": "^11.12.0",

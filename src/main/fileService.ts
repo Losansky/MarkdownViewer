@@ -1,14 +1,5 @@
 import { BrowserWindow, dialog } from 'electron'
-import {
-  readFileSync,
-  readdirSync,
-  watch,
-  existsSync,
-  statSync,
-  type FSWatcher,
-  type Dirent
-} from 'fs'
-import { basename, join, extname } from 'path'
+import { readFileSync, watch, existsSync, statSync, type FSWatcher } from 'fs'
 import type {
   OpenedFilePayload,
   FileErrorPayload,
@@ -16,7 +7,11 @@ import type {
   OpenedFolderPayload,
   SearchHit
 } from '../shared/types'
-import { MARKDOWN_EXTENSIONS, isMarkdownPath } from './security'
+import { isMarkdownPath } from './security'
+import { buildMarkdownTree } from './markdownTree'
+
+export { buildMarkdownTree }
+
 const SEARCH_MAX_HITS = 500
 const SEARCH_MAX_FILE_BYTES = 2 * 1024 * 1024
 
@@ -24,78 +19,6 @@ const MARKDOWN_FILTERS = [
   { name: 'Markdown', extensions: ['md', 'markdown', 'mdown', 'mkd'] },
   { name: 'All Files', extensions: ['*'] }
 ]
-
-function isMarkdownFile(fileName: string): boolean {
-  return MARKDOWN_EXTENSIONS.has(extname(fileName).toLowerCase())
-}
-
-function sortTreeNodes(a: TreeNode, b: TreeNode): number {
-  if (a.type !== b.type) {
-    return a.type === 'directory' ? -1 : 1
-  }
-  return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
-}
-
-/** Build a tree of directories that contain Markdown files (and the files themselves). */
-export function buildMarkdownTree(rootPath: string): TreeNode | null {
-  if (!existsSync(rootPath)) return null
-
-  let rootStat
-  try {
-    rootStat = statSync(rootPath)
-  } catch {
-    return null
-  }
-
-  if (!rootStat.isDirectory()) return null
-
-  const children = walkMarkdownTree(rootPath)
-  return {
-    name: basename(rootPath) || rootPath,
-    path: rootPath,
-    type: 'directory',
-    children
-  }
-}
-
-function walkMarkdownTree(dirPath: string): TreeNode[] {
-  let entries: Dirent[]
-  try {
-    entries = readdirSync(dirPath, { withFileTypes: true })
-  } catch {
-    return []
-  }
-
-  const nodes: TreeNode[] = []
-
-  for (const entry of entries) {
-    if (entry.name.startsWith('.')) continue
-    if (entry.name === 'node_modules' || entry.name === 'out' || entry.name === 'dist') continue
-
-    const fullPath = join(dirPath, entry.name)
-
-    if (entry.isDirectory()) {
-      const childNodes = walkMarkdownTree(fullPath)
-      if (childNodes.length > 0) {
-        nodes.push({
-          name: entry.name,
-          path: fullPath,
-          type: 'directory',
-          children: childNodes
-        })
-      }
-    } else if (entry.isFile() && isMarkdownFile(entry.name)) {
-      nodes.push({
-        name: entry.name,
-        path: fullPath,
-        type: 'file'
-      })
-    }
-  }
-
-  nodes.sort(sortTreeNodes)
-  return nodes
-}
 
 export class FileService {
   private watchers = new Map<string, FSWatcher>()
