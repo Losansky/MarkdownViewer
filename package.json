@@ -37,7 +37,7 @@
     "markdown-it": "^14.1.0",
     "markdown-it-multimd-table": "^4.2.3",
     "markdown-it-task-lists": "^2.1.1",
-    "mermaid": "^11.16.1"
+    "mermaid": "^11.17.2"
   },
   "devDependencies": {
     "@types/katex": "^0.16.7",
