@@ -24,6 +24,7 @@ const numbered = createPipeline(numberedConfig).render(demo, {
 
 const checks: Array<[string, boolean]> = [
   ['table', /<table[\s>]/i.test(html)],
+  ['table wrap', /class="table-wrap"/.test(html) && /<div[^>]*table-wrap[\s\S]*?<table[\s>]/.test(html)],
   ['mermaid flowchart', html.includes('class="mermaid"') && html.includes('flowchart LR')],
   ['task list', /task-list-item|checkbox/i.test(html)],
   ['heading', /<h1[\s>]/i.test(html)],

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.6 — 2026-08-20
+
+### Changed
+
+- Wide Markdown tables use the full document pane (not the text max-width)
+- Long table cells wrap; a horizontal scrollbar appears when columns still overflow the viewer
+
+### Added
+
+- Sample `samples/FRAMES_AND_AUTHORITIES.md` with a wide reference table
+
 ## 1.1.5 — 2026-08-19
 
 ### Added

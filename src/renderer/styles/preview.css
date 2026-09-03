@@ -621,7 +621,8 @@ body {
 #main {
   flex: 1;
   min-width: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   position: relative;
   min-height: 0;
 }
@@ -911,11 +912,20 @@ body {
 }
 
 #preview.has-content {
-  max-width: var(--md-max-width);
-  margin: 0 auto;
+  max-width: none;
+  width: 100%;
+  margin: 0;
 }
 
-#doc-view.line-numbers-on #preview.has-content {
+#preview.has-content
+  > :not(.table-wrap):not(pre):not(.mermaid-wrap):not(.math-block) {
+  max-width: var(--md-max-width);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#doc-view.line-numbers-on #preview.has-content
+  > :not(.table-wrap):not(pre):not(.mermaid-wrap):not(.math-block) {
   margin-left: 0;
   margin-right: auto;
 }
@@ -986,18 +996,34 @@ body {
   margin: 1.5em 0;
 }
 
-#preview table {
-  border-collapse: collapse;
+#preview .table-wrap {
+  box-sizing: border-box;
   width: 100%;
+  max-width: 100%;
   margin: 0 0 1em;
-  display: block;
   overflow-x: auto;
+  overflow-y: hidden;
+}
+
+#preview table {
+  display: table;
+  border-collapse: collapse;
+  table-layout: auto;
+  width: 100%;
+  min-width: 100%;
+  margin: 0;
 }
 
 #preview th,
 #preview td {
   border: 1px solid var(--md-border);
   padding: 6px 13px;
+  vertical-align: top;
+  min-width: 8rem;
+  max-width: 32rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 #preview th {
@@ -1460,5 +1486,21 @@ body {
   #doc-view.line-numbers-on {
     display: flex !important;
     width: 100% !important;
+  }
+
+  #preview .table-wrap {
+    overflow: visible !important;
+    width: auto !important;
+  }
+
+  #preview table {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  #preview th,
+  #preview td {
+    min-width: 0 !important;
+    max-width: none !important;
   }
 }

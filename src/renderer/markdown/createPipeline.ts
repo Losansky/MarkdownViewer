@@ -78,6 +78,7 @@ export function createPipeline(config: PresentationConfig): {
   applyCodeHighlight(md, config.formats.codeHighlight, reserved)
   applyAdmonitions(md, config.formats.admonitions)
   applySourceLineAttributes(md)
+  applyTableWrap(md)
 
   const defaultLinkOpen =
     md.renderer.rules.link_open ??
@@ -118,6 +119,24 @@ export function createPipeline(config: PresentationConfig): {
       html = restoreMathPlaceholders(html, slots)
       return { html }
     }
+  }
+}
+
+function applyTableWrap(md: MarkdownIt): void {
+  const open =
+    md.renderer.rules.table_open ??
+    ((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options))
+  const close =
+    md.renderer.rules.table_close ??
+    ((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options))
+
+  md.renderer.rules.table_open = (tokens, idx, options, env, self) => {
+    const line = tokens[idx].attrGet('data-source-line')
+    const attr = line ? ` data-source-line="${md.utils.escapeHtml(line)}"` : ''
+    return `<div class="table-wrap"${attr}>${open(tokens, idx, options, env, self)}`
+  }
+  md.renderer.rules.table_close = (tokens, idx, options, env, self) => {
+    return `${close(tokens, idx, options, env, self)}</div>\n`
   }
 }
 
