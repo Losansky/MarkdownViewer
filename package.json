@@ -28,7 +28,7 @@
     "sbom": "node scripts/generate-sbom.mjs",
     "start": "electron-vite preview",
     "icon": "node scripts/make-icon.mjs",
-    "dist": "npm run sbom && npm run build && electron-builder --win --publish never",
+    "dist": "npm run sbom && npm run build && node scripts/dist-win.mjs",
     "dist:dir": "npm run sbom && npm run build && electron-builder --win --dir --publish never"
   },
   "dependencies": {
