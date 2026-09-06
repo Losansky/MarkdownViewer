@@ -132,7 +132,7 @@ export class ConfigService {
           } catch (err) {
             console.warn('Failed to reload presentation config:', err)
           }
-        }, 200)
+        }, 400)
       })
     } catch (err) {
       console.warn('Could not watch presentation config:', err)

@@ -43,9 +43,23 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force artifacts | Out-Null
+          $minBytes = 40MB
+          $copied = @()
           Get-ChildItem release -File -Filter '*.exe' |
             Where-Object { $_.Name -notmatch 'uninstaller' } |
-            Copy-Item -Destination artifacts
+            ForEach-Object {
+              if ($_.Length -lt $minBytes) {
+                throw "Stub or truncated artifact: $($_.Name) is $($_.Length) bytes"
+              }
+              Copy-Item $_.FullName -Destination artifacts
+              $copied += $_.Name
+              Write-Host "$($_.Name) $([math]::Round($_.Length / 1MB, 1)) MB"
+            }
+          $hasSetup = $copied | Where-Object { $_ -match 'Setup' }
+          $hasPortable = $copied | Where-Object { $_ -notmatch 'Setup' }
+          if (-not $hasSetup -or -not $hasPortable) {
+            throw "Incomplete Windows build. Found: $($copied -join ', ')"
+          }
 
       - name: Release title
         id: title

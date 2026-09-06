@@ -58,7 +58,7 @@ Then use the menu **File → Open Folder…** (or **Open File…** / `Ctrl+O`) a
 - **Math** via KaTeX (`$…$`, `$$…$$`, ` ```math `)
 - **Syntax highlighting** (highlight.js), with optional line numbers in code fences
 - **GitHub-style admonitions** (`> [!NOTE]`, etc.)
-- Live **file watch** (preview updates when an open file changes on disk)
+- Live **file watch** (preview and folder tree update after a quiet period and a stable file size, so chunked/partial writes are not shown)
 - Folder tree starts **collapsed**; **+ / −** in the explorer header expands or collapses all folders
 - **Table of contents** (`View` / `Options`, `Ctrl+Shift+T`) from headings in the open file
 - **Find** (`Ctrl+F`) in the current file, all open files, or the open folder, with match-case / whole-word / regex

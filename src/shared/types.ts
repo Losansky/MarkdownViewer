@@ -9,6 +9,10 @@ export interface PresentationSettings {
   codeFontFamily: string
   background: string | null
   foreground: string | null
+  /** Optional H1 color; null uses the theme default. */
+  headingColor?: string | null
+  /** Optional H2–H6 / inline-code accent; null uses the theme default. */
+  heading2Color?: string | null
 }
 
 export interface MarkdownSettings {
@@ -23,6 +27,8 @@ export interface MermaidFormatConfig {
   fence: string
   theme: string
   themeVariables: Record<string, string>
+  /** Used when the app is in dark mode (and mermaid theme is default/auto/dark). */
+  themeVariablesDark?: Record<string, string>
   securityLevel: 'strict' | 'loose' | 'antiscript' | 'sandbox'
   fontFamily: string | null
 }

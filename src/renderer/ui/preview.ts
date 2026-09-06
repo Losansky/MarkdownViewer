@@ -32,13 +32,15 @@ function resolveHighlightTheme(config: PresentationConfig): string {
 export function resolveMermaidConfig(config: PresentationConfig): MermaidFormatConfig {
   const mermaid = config.formats.mermaid
   const themeName = (mermaid.theme || 'default').toLowerCase()
-  if (themeName === 'default' || themeName === 'auto') {
-    return {
-      ...mermaid,
-      theme: config.presentation.theme === 'dark' ? 'dark' : 'default'
-    }
+  const isDark = config.presentation.theme === 'dark'
+  const auto = themeName === 'default' || themeName === 'auto'
+  const darkVars = mermaid.themeVariablesDark
+  const useDarkVars = isDark && darkVars && Object.keys(darkVars).length > 0
+  return {
+    ...mermaid,
+    theme: auto ? (isDark ? 'dark' : 'default') : mermaid.theme,
+    themeVariables: useDarkVars ? darkVars : mermaid.themeVariables
   }
-  return mermaid
 }
 
 export class PreviewController {
@@ -168,6 +170,16 @@ export class PreviewController {
       root.style.setProperty('--md-fg', p.foreground)
     } else {
       root.style.removeProperty('--md-fg')
+    }
+    if (p.headingColor) {
+      root.style.setProperty('--md-heading', p.headingColor)
+    } else {
+      root.style.removeProperty('--md-heading')
+    }
+    if (p.heading2Color) {
+      root.style.setProperty('--md-heading-2', p.heading2Color)
+    } else {
+      root.style.removeProperty('--md-heading-2')
     }
 
     const types = this.config.formats.admonitions.types

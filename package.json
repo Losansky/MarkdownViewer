@@ -25,6 +25,7 @@
     "test:security": "node --experimental-strip-types scripts/security-checks.mts",
     "test:tree": "node --experimental-strip-types scripts/tree-checks.mts",
     "test:unit": "node --experimental-strip-types scripts/unit-checks.mts",
+    "postinstall": "node scripts/ensure-electron.mjs",
     "sbom": "node scripts/generate-sbom.mjs",
     "start": "electron-vite preview",
     "icon": "node scripts/make-icon.mjs",
@@ -33,26 +34,26 @@
   },
   "dependencies": {
     "highlight.js": "^11.12.0",
-    "katex": "^0.18.4",
-    "markdown-it": "^14.1.0",
+    "katex": "^0.18.6",
+    "markdown-it": "^14.3.1",
     "markdown-it-multimd-table": "^4.2.3",
     "markdown-it-task-lists": "^2.1.1",
-    "mermaid": "^11.16.1"
+    "mermaid": "^11.17.2"
   },
   "devDependencies": {
     "@types/katex": "^0.16.7",
-    "@types/markdown-it": "^14.1.2",
+    "@types/markdown-it": "^14.2.0",
     "@types/node": "^22.13.10",
-    "electron": "^43.4.0",
+    "electron": "^43.6.0",
     "electron-builder": "^26.15.3",
     "electron-vite": "^3.0.0",
     "png-to-ico": "^3.0.1",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.4",
     "typescript": "^5.8.2",
     "vite": "^6.2.2"
   },
   "allowScripts": {
-    "electron@43.4.0": true,
+    "electron@43.6.0": true,
     "esbuild@0.25.12": true
   },
   "build": {

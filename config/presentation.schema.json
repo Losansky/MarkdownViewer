@@ -15,7 +15,15 @@
         "maxWidthPx": { "type": "number", "minimum": 320 },
         "codeFontFamily": { "type": "string" },
         "background": { "type": ["string", "null"] },
-        "foreground": { "type": ["string", "null"] }
+        "foreground": { "type": ["string", "null"] },
+        "headingColor": {
+          "type": ["string", "null"],
+          "description": "H1 color; null uses the built-in theme default"
+        },
+        "heading2Color": {
+          "type": ["string", "null"],
+          "description": "H2–H6 and inline code accent; null uses the built-in theme default"
+        }
       }
     },
     "markdown": {
@@ -68,6 +76,7 @@
             "fence": { "type": "string" },
             "theme": { "type": "string" },
             "themeVariables": { "type": "object" },
+            "themeVariablesDark": { "type": "object" },
             "securityLevel": {
               "type": "string",
               "enum": ["strict", "sandbox"],

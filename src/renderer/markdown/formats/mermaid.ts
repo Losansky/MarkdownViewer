@@ -1,8 +1,7 @@
 import type MarkdownIt from 'markdown-it'
 import type { MermaidFormatConfig } from '../../../shared/types'
 
-let initialized = false
-let lastTheme: string | null = null
+let lastInitKey: string | null = null
 
 export function applyMermaidFence(md: MarkdownIt, config: MermaidFormatConfig): void {
   if (!config.enabled) return
@@ -38,7 +37,13 @@ export async function renderMermaidDiagrams(
 
   const { default: mermaid } = await import('mermaid')
   const theme = config.theme || 'default'
-  if (!initialized || lastTheme !== theme) {
+  const initKey = JSON.stringify({
+    theme,
+    securityLevel: config.securityLevel,
+    fontFamily: config.fontFamily,
+    themeVariables: config.themeVariables
+  })
+  if (lastInitKey !== initKey) {
     mermaid.initialize({
       startOnLoad: false,
       theme: theme as 'default' | 'dark' | 'forest' | 'neutral' | 'base',
@@ -46,8 +51,7 @@ export async function renderMermaidDiagrams(
       themeVariables: config.themeVariables || {},
       fontFamily: config.fontFamily || undefined
     })
-    initialized = true
-    lastTheme = theme
+    lastInitKey = initKey
   }
 
   const errors: string[] = []

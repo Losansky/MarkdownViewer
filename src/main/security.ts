@@ -11,6 +11,26 @@ function sanitizeCssColor(color: string, fallback = '#0969da'): string {
   return CSS_COLOR.test(trimmed) ? trimmed : fallback
 }
 
+function sanitizeThemeVariables(
+  vars: Record<string, string> | undefined
+): Record<string, string> {
+  const out: Record<string, string> = {}
+  if (!vars) return out
+  for (const [key, value] of Object.entries(vars)) {
+    if (typeof key !== 'string' || typeof value !== 'string') continue
+    if (!/^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(key)) continue
+    const trimmed = value.trim()
+    if (CSS_COLOR.test(trimmed)) {
+      out[key] = trimmed
+      continue
+    }
+    if (/^[A-Za-z0-9._%+-]{1,64}$/.test(trimmed)) {
+      out[key] = trimmed
+    }
+  }
+  return out
+}
+
 /** Local files the OS may open after the user confirms. Executables and shortcuts are excluded. */
 export const OS_OPEN_EXTENSIONS = new Set([
   '.pdf',
@@ -101,6 +121,10 @@ export function clampPresentationConfig(
   if (mermaid.securityLevel !== 'strict' && mermaid.securityLevel !== 'sandbox') {
     mermaid.securityLevel = 'strict'
   }
+  mermaid.themeVariables = sanitizeThemeVariables(mermaid.themeVariables)
+  if (mermaid.themeVariablesDark) {
+    mermaid.themeVariablesDark = sanitizeThemeVariables(mermaid.themeVariablesDark)
+  }
 
   const types = { ...config.formats.admonitions.types }
   for (const [name, typeConfig] of Object.entries(types)) {
@@ -111,6 +135,14 @@ export function clampPresentationConfig(
   }
 
   const p = config.presentation
+  const headingColor =
+    p.headingColor == null || p.headingColor === ''
+      ? null
+      : sanitizeCssColor(p.headingColor)
+  const heading2Color =
+    p.heading2Color == null || p.heading2Color === ''
+      ? null
+      : sanitizeCssColor(p.heading2Color)
   return {
     ...config,
     presentation: {
@@ -118,7 +150,9 @@ export function clampPresentationConfig(
       theme: p.theme === 'dark' ? 'dark' : 'light',
       fontSizePx: clampNumber(p.fontSizePx, 16, 10, 48),
       lineHeight: clampNumber(p.lineHeight, 1.6, 1, 3),
-      maxWidthPx: clampNumber(p.maxWidthPx, 1100, 320, 4000)
+      maxWidthPx: clampNumber(p.maxWidthPx, 1100, 320, 4000),
+      headingColor,
+      heading2Color
     },
     markdown,
     formats: {

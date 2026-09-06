@@ -1,6 +1,7 @@
 import { BrowserWindow, dialog } from 'electron'
 import { readFileSync, watch, existsSync, statSync, type FSWatcher } from 'fs'
 import { readFile } from 'fs/promises'
+import { dirname, join } from 'path'
 import type {
   OpenedFilePayload,
   FileErrorPayload,
@@ -12,6 +13,8 @@ import type {
 import { isMarkdownPath } from './security'
 import { buildMarkdownTree } from './markdownTree'
 import { collectTextHits, SEARCH_MAX_HITS } from '../shared/search'
+import { pathsEqual } from '../shared/pathUtils'
+import { FILE_QUIET_MS, readFileWhenStable } from './fileStability'
 
 export { buildMarkdownTree }
 
@@ -24,7 +27,9 @@ const MARKDOWN_FILTERS = [
 
 export class FileService {
   private watchers = new Map<string, FSWatcher>()
+  private dirWatchers = new Map<string, { watcher: FSWatcher; files: Set<string> }>()
   private debouncers = new Map<string, NodeJS.Timeout>()
+  private reloadGen = new Map<string, number>()
   private lastActivePath: string | null = null
   private folderRoot: string | null = null
   private folderWatchPath: string | null = null
@@ -188,31 +193,98 @@ export class FileService {
 
   private watchPath(filePath: string): void {
     if (this.watchers.has(filePath)) return
+    this.attachFileWatcher(filePath)
+    this.attachDirWatcher(filePath)
+  }
 
+  private attachFileWatcher(filePath: string): void {
+    const previous = this.watchers.get(filePath)
+    if (previous) {
+      previous.close()
+      this.watchers.delete(filePath)
+    }
     try {
       const watcher = watch(filePath, { persistent: false }, (eventType) => {
         if (eventType !== 'change' && eventType !== 'rename') return
-        const existing = this.debouncers.get(filePath)
-        if (existing) clearTimeout(existing)
-        const timer = setTimeout(() => {
-          this.debouncers.delete(filePath)
-          if (this.watchers.has(filePath)) {
-            try {
-              if (!existsSync(filePath)) return
-              const content = readFileSync(filePath, 'utf-8')
-              this.onOpened({ path: filePath, content })
-            } catch (err) {
-              const message = err instanceof Error ? err.message : String(err)
-              this.onError({ path: filePath, message: `Could not reload file: ${message}` })
-            }
-          }
-        }, 150)
-        this.debouncers.set(filePath, timer)
+        this.scheduleFileReload(filePath, eventType === 'rename')
+      })
+      watcher.on('error', (err) => {
+        console.warn('File watcher error:', filePath, err)
       })
       this.watchers.set(filePath, watcher)
     } catch (err) {
       console.warn('Could not watch file:', err)
     }
+  }
+
+  private attachDirWatcher(filePath: string): void {
+    const dir = dirname(filePath)
+    let entry = this.dirWatchers.get(dir)
+    if (!entry) {
+      try {
+        const watcher = watch(dir, { persistent: false }, (_eventType, filename) => {
+          const group = this.dirWatchers.get(dir)
+          if (!group) return
+          const name = filename == null ? '' : String(filename)
+          if (!name) return
+          const full = join(dir, name)
+          for (const openPath of group.files) {
+            if (pathsEqual(openPath, full)) {
+              this.scheduleFileReload(openPath, true)
+            }
+          }
+        })
+        watcher.on('error', (err) => {
+          console.warn('Directory watcher error:', dir, err)
+        })
+        entry = { watcher, files: new Set() }
+        this.dirWatchers.set(dir, entry)
+      } catch (err) {
+        console.warn('Could not watch directory for atomic saves:', err)
+        return
+      }
+    }
+    entry.files.add(filePath)
+  }
+
+  private scheduleFileReload(filePath: string, reattach: boolean): void {
+    const existing = this.debouncers.get(filePath)
+    if (existing) clearTimeout(existing)
+    const gen = (this.reloadGen.get(filePath) ?? 0) + 1
+    this.reloadGen.set(filePath, gen)
+    const timer = setTimeout(() => {
+      this.debouncers.delete(filePath)
+      void this.reloadWhenStable(filePath, gen, reattach)
+    }, FILE_QUIET_MS)
+    this.debouncers.set(filePath, timer)
+  }
+
+  private async reloadWhenStable(
+    filePath: string,
+    gen: number,
+    reattach: boolean
+  ): Promise<void> {
+    const isStale = (): boolean => this.reloadGen.get(filePath) !== gen
+    try {
+      const content = await readFileWhenStable(filePath, isStale)
+      if (isStale() || content === null) return
+      if (!this.watchers.has(filePath) && !this.isDirWatching(filePath)) return
+      this.onOpened({ path: filePath, content })
+      if (reattach) this.attachFileWatcher(filePath)
+    } catch (err) {
+      if (isStale()) return
+      const message = err instanceof Error ? err.message : String(err)
+      this.onError({ path: filePath, message: `Could not reload file: ${message}` })
+    }
+  }
+
+  private isDirWatching(filePath: string): boolean {
+    const entry = this.dirWatchers.get(dirname(filePath))
+    if (!entry) return false
+    for (const p of entry.files) {
+      if (pathsEqual(p, filePath)) return true
+    }
+    return false
   }
 
   private stopWatch(filePath: string): void {
@@ -221,10 +293,22 @@ export class FileService {
       clearTimeout(timer)
       this.debouncers.delete(filePath)
     }
+    this.reloadGen.delete(filePath)
     const watcher = this.watchers.get(filePath)
     if (watcher) {
       watcher.close()
       this.watchers.delete(filePath)
+    }
+    const dir = dirname(filePath)
+    const entry = this.dirWatchers.get(dir)
+    if (entry) {
+      for (const p of [...entry.files]) {
+        if (pathsEqual(p, filePath)) entry.files.delete(p)
+      }
+      if (entry.files.size === 0) {
+        entry.watcher.close()
+        this.dirWatchers.delete(dir)
+      }
     }
   }
 
@@ -243,7 +327,7 @@ export class FileService {
           this.folderDebounce = setTimeout(() => {
             this.folderDebounce = null
             this.refreshFolderQuietly()
-          }, 250)
+          }, FILE_QUIET_MS)
         }
       )
       this.folderWatcher.on('error', (err) => {

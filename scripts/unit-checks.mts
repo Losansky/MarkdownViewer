@@ -16,6 +16,9 @@ import {
   restoreMathPlaceholders
 } from '../src/renderer/markdown/formats/math.ts'
 import { countSourceLines, injectFirstTagAttr } from '../src/renderer/markdown/sourceLines.ts'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { readFileWhenStable, tryStatFile } from '../src/main/fileStability.ts'
 
 const hits: ReturnType<typeof searchDocuments> = []
 collectTextHits('a.md', 'hello world\nhello again', 'hello', hits)
@@ -100,5 +103,21 @@ const bad = validatePresentationConfig(
 )
 assert.equal(bad.valid, false)
 if (!bad.valid) assert.match(bad.message, /fontSizePx/)
+
+const stableDir = mkdtempSync(join(tmpdir(), 'mdv-stable-'))
+const stablePath = join(stableDir, 'note.md')
+writeFileSync(stablePath, 'hello-stable')
+assert.equal(tryStatFile(stablePath)?.size, 'hello-stable'.length)
+assert.equal(await readFileWhenStable(stablePath), 'hello-stable')
+writeFileSync(stablePath, 'chunk')
+const pending = readFileWhenStable(stablePath)
+await new Promise((resolve) => setTimeout(resolve, 120))
+writeFileSync(stablePath, 'chunk-complete')
+assert.equal(await pending, 'chunk-complete')
+assert.equal(
+  await readFileWhenStable(join(stableDir, 'missing.md'), undefined, { maxWaitMs: 250 }),
+  null
+)
+rmSync(stableDir, { recursive: true, force: true })
 
 console.log('OK: shared unit checks passed.')
