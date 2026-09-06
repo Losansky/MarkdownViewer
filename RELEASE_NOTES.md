@@ -1,17 +1,12 @@
-## MarkDown Viewer 1.1.6
+## MarkDown Viewer 1.1.7
 
 ### Changed
 
-- Wide Markdown tables use the full document pane (not the text max-width)
-- Long table cells wrap; a horizontal scrollbar appears when columns still overflow the viewer
 - Headings (`##`) and inline code use a brighter cyan/blue accent, in line with notes and tips
 - Mermaid diagrams use more vivid node colors (blue / green / gold), with a separate dark-mode palette
 - Live reload waits for a quiet period and a stable file size so chunked or partial writes are not shown
 - Windows installer is built outside OneDrive so Setup.exe is a full NSIS package, not a stub
-
-### Added
-
-- Sample `samples/FRAMES_AND_AUTHORITIES.md` with a wide reference table
+- Release packaging fails if Setup or portable exe is under 40 MB (rejects NSIS stubs)
 
 ### Security / libraries
 

@@ -197,15 +197,15 @@ Version lives in `package.json`. CI runs typecheck, security checks, smoke, and 
 
 To publish a new Windows build:
 
-1. Bump `"version"` in `package.json` (for example `1.1.6`).
+1. Bump `"version"` in `package.json` (for example `1.1.7`).
 2. Update `CHANGELOG.md` and `RELEASE_NOTES.md`.
 3. Commit the change to `main`.
 4. Tag and push:
 
 ```bash
-git tag v1.1.6
+git tag v1.1.7
 git push origin main
-git push origin v1.1.6
+git push origin v1.1.7
 ```
 
 Pushing a `v*` tag runs [.github/workflows/release.yml](.github/workflows/release.yml), which builds the installer and portable exe and attaches them to a GitHub Release.
