@@ -24,6 +24,26 @@ This sample exercises **standard** Markdown and **non-standard** notations contr
 | KaTeX math     | Yes       |
 | Admonitions    | Yes       |
 
+### Currency vs math (`$` handling)
+
+Dollar amounts in table cells must stay **text** (columns and pipes intact). True KaTeX uses `$…$` with TeX, not `$1,202.50`.
+
+| Case | Col A | Col B | Col C | Expect |
+|------|------:|------:|:-----:|--------|
+| Adjacent currency | $1,202.50 | $48.10 | C | Three columns; both amounts visible as `$…` |
+| Thousands + cents | $24,796.80 | $413.28 | A | Commas not eaten; next `$` is not math |
+| Two amounts in one cell | $20,000 and $30,000 | — | — | One cell, no math, no red error |
+| Phrase then amount | cost $9.99 | $0.00 | B | Opening `$` after a space is currency |
+| Real math in a cell | $\pi r^2$ | $12.00 | ok | Col A is KaTeX; Col B is currency |
+
+### After currency table
+
+This heading must remain an **H3** after the table (not swallowed into a cell). Inline math still works: $x = y + 1$.
+
+| Next table | Amount |
+|------------|-------:|
+| Must not merge with the table above | $8,349.25 |
+
 ### Code
 
 ```typescript

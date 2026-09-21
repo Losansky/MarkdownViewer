@@ -1,3 +1,5 @@
+import type { MarkdownThemeColors } from './markdownColors'
+
 export type ThemeName = 'light' | 'dark'
 
 export interface PresentationSettings {
@@ -9,10 +11,12 @@ export interface PresentationSettings {
   codeFontFamily: string
   background: string | null
   foreground: string | null
-  /** Optional H1 color; null uses the theme default. */
+  /** Optional H1 color; null uses the theme default. Prefer markdownColors.h1. */
   headingColor?: string | null
-  /** Optional H2–H6 / inline-code accent; null uses the theme default. */
+  /** Optional H2–H6 / inline-code accent; null uses the theme default. Prefer markdownColors.h2. */
   heading2Color?: string | null
+  /** Per-tag text colors for light and dark themes. Null/omit = CSS default. */
+  markdownColors?: MarkdownThemeColors
 }
 
 export interface MarkdownSettings {

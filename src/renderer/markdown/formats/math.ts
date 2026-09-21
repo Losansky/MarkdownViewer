@@ -27,6 +27,69 @@ function escapeAttr(s: string): string {
   return escapeHtml(s).replace(/'/g, '&#39;')
 }
 
+function isEscaped(source: string, index: number): boolean {
+  let slashes = 0
+  for (let i = index - 1; i >= 0 && source[i] === '\\'; i--) slashes++
+  return slashes % 2 === 1
+}
+
+function isWhitespace(ch: string | undefined): boolean {
+  return ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r'
+}
+
+function isDigit(ch: string | undefined): boolean {
+  return ch !== undefined && ch >= '0' && ch <= '9'
+}
+
+/**
+ * Pandoc-style inline `$...$` so currency like `$24,796.80 | $413.28` is not math.
+ * Opening `$` must be followed by a non-space; closing `$` must be preceded by a
+ * non-space and not followed by a digit; the span cannot cross a newline.
+ */
+function replaceInlineDollarMath(
+  source: string,
+  replacer: (inner: string) => string
+): string {
+  let result = ''
+  let i = 0
+  while (i < source.length) {
+    const start = source.indexOf('$', i)
+    if (start === -1) {
+      result += source.slice(i)
+      break
+    }
+    result += source.slice(i, start)
+    if (isEscaped(source, start) || source[start + 1] === '$') {
+      result += '$'
+      i = start + 1
+      continue
+    }
+    const contentStart = start + 1
+    if (contentStart >= source.length || isWhitespace(source[contentStart])) {
+      result += '$'
+      i = start + 1
+      continue
+    }
+    const newline = source.indexOf('\n', contentStart)
+    const limit = newline === -1 ? source.length : newline
+    let end = -1
+    for (let j = contentStart; j < limit; j++) {
+      if (source[j] !== '$' || isEscaped(source, j) || source[j + 1] === '$') continue
+      if (isWhitespace(source[j - 1]) || isDigit(source[j + 1])) continue
+      end = j
+      break
+    }
+    if (end === -1) {
+      result += '$'
+      i = start + 1
+      continue
+    }
+    result += replacer(source.slice(contentStart, end))
+    i = end + 1
+  }
+  return result
+}
+
 function replaceDelimited(
   source: string,
   open: string,
@@ -34,6 +97,9 @@ function replaceDelimited(
   replacer: (inner: string) => string
 ): string {
   if (!open || !close) return source
+  if (open === '$' && close === '$') {
+    return replaceInlineDollarMath(source, replacer)
+  }
   let result = ''
   let i = 0
   while (i < source.length) {
@@ -48,12 +114,6 @@ function replaceDelimited(
     if (end === -1) {
       result += source.slice(start)
       break
-    }
-    // Avoid empty $$ at start of longer delimiters issues: skip if open is single $ and next is $
-    if (open === '$' && source[contentStart] === '$') {
-      result += source[start]
-      i = start + 1
-      continue
     }
     const inner = source.slice(contentStart, end)
     result += replacer(inner)

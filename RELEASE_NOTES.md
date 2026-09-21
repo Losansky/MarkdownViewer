@@ -1,14 +1,16 @@
-## MarkDown Viewer 1.1.7
+## MarkDown Viewer 1.1.8
+
+### Fixed
+
+- Dollar amounts in Markdown tables are no longer treated as KaTeX, so `$1,202.50 | $48.10` keeps its columns instead of spilling into the next heading or table
+- **Zoom In** works from `Ctrl+=` (the `=/+` key), `Ctrl+Shift+=`, and numpad `+`
+
+### Added
+
+- Per-tag preview colors in `presentation.markdownColors` (light / dark) for headings, links, code, quotes, and other Markdown tags
+- Sample `samples/MARKDOWN_STYLES.md` mapping tags → CSS → JSON keys
+- Currency vs math table in `samples/demo.md` to verify `$` handling
 
 ### Changed
 
-- Headings (`##`) and inline code use a brighter cyan/blue accent, in line with notes and tips
-- Mermaid diagrams use more vivid node colors (blue / green / gold), with a separate dark-mode palette
-- Live reload waits for a quiet period and a stable file size so chunked or partial writes are not shown
-- Windows installer is built outside OneDrive so Setup.exe is a full NSIS package, not a stub
-- Release packaging fails if Setup or portable exe is under 40 MB (rejects NSIS stubs)
-
-### Security / libraries
-
-- mermaid 11.17.2, KaTeX 0.18.6, markdown-it 14.3.1, Electron 43.6.0
-- Transitive audit fixes (including DOMPurify); `npm audit` is clean
+- Wide tables size columns to content, wrap long cells, and clip overflow so cell text does not paint over neighbors

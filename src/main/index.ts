@@ -12,6 +12,7 @@ import {
 } from './editorService'
 import { openMarkdownLink } from './linkService'
 import { getAboutInfo } from './aboutService'
+import { isZoomInShortcut } from './zoomShortcut'
 import { pdfExportFileName } from '../shared/pathUtils'
 import type {
   OpenedFilePayload,
@@ -109,6 +110,17 @@ function createWindow(): void {
     if (url.startsWith('http:') || url.startsWith('https:')) {
       void shell.openExternal(url)
     }
+  })
+
+  // Electron's zoomIn role is CommandOrControl+Plus, which on Windows/Linux is
+  // Shift+= (or a key that emits '+' with no modifiers). Browsers zoom on Ctrl+=
+  // as well — the physical key next to minus. Handle all of those here so the
+  // menu accelerator cannot miss them.
+  const contents = mainWindow.webContents
+  contents.on('before-input-event', (event, input) => {
+    if (!isZoomInShortcut(input)) return
+    event.preventDefault()
+    contents.zoomLevel += 0.5
   })
 
   if (process.env.ELECTRON_RENDERER_URL) {
@@ -513,7 +525,19 @@ function buildMenu(): void {
         { role: 'toggleDevTools', visible: !app.isPackaged },
         { type: 'separator' },
         { role: 'resetZoom' },
-        { role: 'zoomIn' },
+        { role: 'zoomIn', accelerator: 'CommandOrControl+=' },
+        {
+          role: 'zoomIn',
+          accelerator: 'CommandOrControl+Plus',
+          visible: false,
+          acceleratorWorksWhenHidden: true
+        },
+        {
+          role: 'zoomIn',
+          accelerator: 'CommandOrControl+numadd',
+          visible: false,
+          acceleratorWorksWhenHidden: true
+        },
         { role: 'zoomOut' },
         { type: 'separator' },
         { role: 'togglefullscreen' }

@@ -14,3 +14,7 @@ build/sbom.json
 .env
 .env.*
 !.env.example
+
+# Private local documents — never commit
+samples/COMPARE.md
+samples/FRAMES_AND_AUTHORITIES.md

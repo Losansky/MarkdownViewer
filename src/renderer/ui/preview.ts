@@ -1,4 +1,5 @@
 import type { MermaidFormatConfig, PresentationConfig } from '../../shared/types'
+import { MARKDOWN_COLOR_KEYS } from '../../shared/markdownColors'
 import { createPipeline } from '../markdown/createPipeline'
 import { renderMermaidDiagrams } from '../markdown/formats/mermaid'
 import { highlightThemeHref } from '../markdown/formats/codeHighlight'
@@ -180,6 +181,14 @@ export class PreviewController {
       root.style.setProperty('--md-heading-2', p.heading2Color)
     } else {
       root.style.removeProperty('--md-heading-2')
+    }
+
+    const tagColors = p.markdownColors?.[p.theme] ?? {}
+    for (const key of MARKDOWN_COLOR_KEYS) {
+      const cssVar = `--md-${key}`
+      const value = tagColors[key]
+      if (value) root.style.setProperty(cssVar, value)
+      else root.style.removeProperty(cssVar)
     }
 
     const types = this.config.formats.admonitions.types

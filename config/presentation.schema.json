@@ -22,7 +22,15 @@
         },
         "heading2Color": {
           "type": ["string", "null"],
-          "description": "H2–H6 and inline code accent; null uses the built-in theme default"
+          "description": "H2–H6 and inline code accent; null uses the built-in theme default. Prefer markdownColors.h2"
+        },
+        "markdownColors": {
+          "type": "object",
+          "description": "Per-Markdown-tag text colors by theme. Keys: h1–h6, p, a, strong, em, del, blockquote, hr, code, li, th. Null omits the override.",
+          "properties": {
+            "light": { "$ref": "#/$defs/markdownColorMap" },
+            "dark": { "$ref": "#/$defs/markdownColorMap" }
+          }
         }
       }
     },
@@ -138,6 +146,30 @@
             }
           }
         }
+      }
+    }
+  },
+  "$defs": {
+    "markdownColorMap": {
+      "type": "object",
+      "additionalProperties": { "type": ["string", "null"] },
+      "properties": {
+        "h1": { "type": ["string", "null"] },
+        "h2": { "type": ["string", "null"] },
+        "h3": { "type": ["string", "null"] },
+        "h4": { "type": ["string", "null"] },
+        "h5": { "type": ["string", "null"] },
+        "h6": { "type": ["string", "null"] },
+        "p": { "type": ["string", "null"] },
+        "a": { "type": ["string", "null"] },
+        "strong": { "type": ["string", "null"] },
+        "em": { "type": ["string", "null"] },
+        "del": { "type": ["string", "null"] },
+        "blockquote": { "type": ["string", "null"] },
+        "hr": { "type": ["string", "null"] },
+        "code": { "type": ["string", "null"] },
+        "li": { "type": ["string", "null"] },
+        "th": { "type": ["string", "null"] }
       }
     }
   }

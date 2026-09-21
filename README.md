@@ -87,6 +87,9 @@ You can also open the config folder from the menu: **Help → Open presentation 
 Shipped defaults live in [`config/presentation.default.json`](config/presentation.default.json).  
 JSON Schema: [`config/presentation.schema.json`](config/presentation.schema.json).
 
+Per-tag preview colors (headings, links, inline code, quotes, …) are `presentation.markdownColors.light` / `.dark`.  
+Open [`samples/MARKDOWN_STYLES.md`](samples/MARKDOWN_STYLES.md) in the viewer for the Markdown → CSS → JSON mapping table.
+
 ### Example options
 
 ```json
@@ -197,15 +200,15 @@ Version lives in `package.json`. CI runs typecheck, security checks, smoke, and 
 
 To publish a new Windows build:
 
-1. Bump `"version"` in `package.json` (for example `1.1.7`).
+1. Bump `"version"` in `package.json` (for example `1.1.8`).
 2. Update `CHANGELOG.md` and `RELEASE_NOTES.md`.
 3. Commit the change to `main`.
 4. Tag and push:
 
 ```bash
-git tag v1.1.7
+git tag v1.1.8
 git push origin main
-git push origin v1.1.7
+git push origin v1.1.8
 ```
 
 Pushing a `v*` tag runs [.github/workflows/release.yml](.github/workflows/release.yml), which builds the installer and portable exe and attaches them to a GitHub Release.

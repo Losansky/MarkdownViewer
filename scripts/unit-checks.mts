@@ -11,6 +11,7 @@ import { isMarkdownPath } from '../src/shared/markdownExtensions.ts'
 import { sanitizeCssColor } from '../src/shared/cssUtils.ts'
 import { slugifyHeading } from '../src/shared/headingSlug.ts'
 import { validatePresentationConfig } from '../src/main/configValidation.ts'
+import { MARKDOWN_COLOR_KEYS } from '../src/shared/markdownColors.ts'
 import {
   preprocessMathWithPlaceholders,
   restoreMathPlaceholders
@@ -19,6 +20,7 @@ import { countSourceLines, injectFirstTagAttr } from '../src/renderer/markdown/s
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { readFileWhenStable, tryStatFile } from '../src/main/fileStability.ts'
+import { isZoomInShortcut } from '../src/main/zoomShortcut.ts'
 
 const hits: ReturnType<typeof searchDocuments> = []
 collectTextHits('a.md', 'hello world\nhello again', 'hello', hits)
@@ -93,10 +95,38 @@ const restored = restoreMathPlaceholders(`<p>${text}</p>`, slots)
 assert.ok(restored.includes('math-inline') || restored.includes('katex'))
 assert.equal(restored.includes('MATHPLACEHOLDER'), false)
 
+const currencyLine = '| WLY | 25 | $1,202.50 | $48.10 | C | $48.10 | JOHN WILEY | K_Brokerage |'
+const currency = preprocessMathWithPlaceholders(currencyLine, mathConfig)
+assert.equal(currency.slots.length, 0, 'currency $ amounts must not become math')
+assert.equal(currency.text, currencyLine)
+assert.equal(currency.text.split('|').length, currencyLine.split('|').length)
+
+const currencyPair = preprocessMathWithPlaceholders('$20,000 and $30,000', mathConfig)
+assert.equal(currencyPair.slots.length, 0)
+
+const realMath = preprocessMathWithPlaceholders('area $x = \\pi r^2$ ok', mathConfig)
+assert.equal(realMath.slots.length, 1)
+
+const quadratic = preprocessMathWithPlaceholders(
+  'the quadratic formula is $x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$.',
+  mathConfig
+)
+assert.equal(quadratic.slots.length, 1)
+
+const spanning = preprocessMathWithPlaceholders(
+  '| WLY | $48.10 | K_Brokerage |\n\n## SELL / TRIM\n\n| ACGLO | $8,349.25 | $18.35 |\n',
+  mathConfig
+)
+assert.equal(spanning.slots.length, 0)
+assert.ok(spanning.text.includes('## SELL / TRIM'))
+assert.ok(spanning.text.includes('| ACGLO |'))
+
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const schemaPath = join(root, 'config/presentation.schema.json')
 const defaults = JSON.parse(readFileSync(join(root, 'config/presentation.default.json'), 'utf-8'))
 assert.equal(validatePresentationConfig(defaults, schemaPath).valid, true)
+assert.ok(MARKDOWN_COLOR_KEYS.includes('h2'))
+assert.ok(defaults.presentation.markdownColors.light.h2)
 const bad = validatePresentationConfig(
   { ...defaults, presentation: { ...defaults.presentation, fontSizePx: 'large' } },
   schemaPath
@@ -119,5 +149,15 @@ assert.equal(
   null
 )
 rmSync(stableDir, { recursive: true, force: true })
+
+const zoomBase = { type: 'keyDown', key: '=', code: 'Equal', control: true, meta: false, alt: false }
+assert.equal(isZoomInShortcut(zoomBase), true)
+assert.equal(isZoomInShortcut({ ...zoomBase, key: '+', code: 'Equal' }), true)
+assert.equal(isZoomInShortcut({ ...zoomBase, key: '+', code: 'NumpadAdd' }), true)
+assert.equal(isZoomInShortcut({ ...zoomBase, control: false }), false)
+assert.equal(isZoomInShortcut({ ...zoomBase, alt: true }), false)
+assert.equal(isZoomInShortcut({ ...zoomBase, type: 'keyUp' }), false)
+assert.equal(isZoomInShortcut({ ...zoomBase, key: '-', code: 'Minus' }), false)
+assert.equal(isZoomInShortcut({ ...zoomBase, key: '0', code: 'Digit0' }), false)
 
 console.log('OK: shared unit checks passed.')

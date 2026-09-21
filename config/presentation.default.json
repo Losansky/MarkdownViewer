@@ -10,7 +10,45 @@
 		"background": null,
 		"foreground": null,
 		"headingColor": null,
-		"heading2Color": null
+		"heading2Color": null,
+		"markdownColors": {
+			"light": {
+				"h1": "#1f2328",
+				"h2": "#1f6feb",
+				"h3": "#1f6feb",
+				"h4": "#1f6feb",
+				"h5": "#1f6feb",
+				"h6": "#1f6feb",
+				"p": "#1f2328",
+				"a": "#1f6feb",
+				"strong": null,
+				"em": null,
+				"del": null,
+				"blockquote": "#656d76",
+				"hr": "#d0d7de",
+				"code": "#1f6feb",
+				"li": null,
+				"th": "#1f2328"
+			},
+			"dark": {
+				"h1": "#e6edf3",
+				"h2": "#58c4e8",
+				"h3": "#58c4e8",
+				"h4": "#58c4e8",
+				"h5": "#58c4e8",
+				"h6": "#58c4e8",
+				"p": "#e6edf3",
+				"a": "#58a6ff",
+				"strong": null,
+				"em": null,
+				"del": null,
+				"blockquote": "#8b949e",
+				"hr": "#30363d",
+				"code": "#58c4e8",
+				"li": null,
+				"th": "#e6edf3"
+			}
+		}
 	},
 	"editors": {
 		"default": "Notepad++",

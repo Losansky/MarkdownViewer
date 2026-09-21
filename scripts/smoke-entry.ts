@@ -22,9 +22,31 @@ const numbered = createPipeline(numberedConfig).render(demo, {
   documentPath: join(root, 'samples/demo.md')
 }).html
 
+const currencySource = `| Ticker | Mkt Val | Price | Rating |
+|--------|--------:|------:|:------:|
+| AAA | $1,202.50 | $48.10 | C |
+| BBB | $24,796.80 | $413.28 | A |
+
+## After table
+
+| Next | Type |
+|------|------|
+| CCC | Equity |
+`
+const currencyHtml = createPipeline(config).render(currencySource).html
+const currencyRows = currencyHtml.match(/<tr[\s\S]*?<\/tr>/g) ?? []
+const firstBodyCells = (currencyRows[1]?.match(/<td[\s>]/g) ?? []).length
+
 const checks: Array<[string, boolean]> = [
   ['table', /<table[\s>]/i.test(html)],
   ['table wrap', /class="table-wrap"/.test(html) && /<div[^>]*table-wrap[\s\S]*?<table[\s>]/.test(html)],
+  ['demo currency keeps dollar text', html.includes('$1,202.50') && html.includes('$48.10')],
+  ['demo currency not math-error', !html.includes('math-error')],
+  ['demo currency heading after table', /<h3[^>]*>After currency table<\/h3>/i.test(html)],
+  ['currency table keeps four cells', firstBodyCells === 4],
+  ['currency table keeps dollar text', currencyHtml.includes('$1,202.50') && currencyHtml.includes('$48.10')],
+  ['currency table not math-error', !currencyHtml.includes('math-error')],
+  ['currency table does not swallow heading', /<h2[^>]*>After table<\/h2>/i.test(currencyHtml)],
   ['mermaid flowchart', html.includes('class="mermaid"') && html.includes('flowchart LR')],
   ['task list', /task-list-item|checkbox/i.test(html)],
   ['heading', /<h1[\s>]/i.test(html)],

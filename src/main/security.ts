@@ -1,6 +1,25 @@
 import { extname } from 'path'
 import type { PresentationConfig } from '../shared/types'
 
+const MARKDOWN_COLOR_KEY_SET = new Set([
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'p',
+  'a',
+  'strong',
+  'em',
+  'del',
+  'blockquote',
+  'hr',
+  'code',
+  'li',
+  'th'
+])
+
 export const MARKDOWN_EXTENSIONS = new Set(['.md', '.markdown', '.mdown', '.mkd'])
 
 const CSS_COLOR =
@@ -9,6 +28,33 @@ const CSS_COLOR =
 function sanitizeCssColor(color: string, fallback = '#0969da'): string {
   const trimmed = color.trim()
   return CSS_COLOR.test(trimmed) ? trimmed : fallback
+}
+
+function sanitizeMarkdownColorMap(
+  map: Record<string, string | null> | undefined
+): Record<string, string | null> {
+  const out: Record<string, string | null> = {}
+  if (!map) return out
+  for (const [key, value] of Object.entries(map)) {
+    if (!MARKDOWN_COLOR_KEY_SET.has(key)) continue
+    if (value == null || value === '') {
+      out[key] = null
+      continue
+    }
+    if (typeof value !== 'string') continue
+    out[key] = sanitizeCssColor(value)
+  }
+  return out
+}
+
+function sanitizeMarkdownColors(
+  colors: PresentationConfig['presentation']['markdownColors']
+): PresentationConfig['presentation']['markdownColors'] {
+  if (!colors) return undefined
+  return {
+    light: sanitizeMarkdownColorMap(colors.light),
+    dark: sanitizeMarkdownColorMap(colors.dark)
+  }
 }
 
 function sanitizeThemeVariables(
@@ -152,7 +198,8 @@ export function clampPresentationConfig(
       lineHeight: clampNumber(p.lineHeight, 1.6, 1, 3),
       maxWidthPx: clampNumber(p.maxWidthPx, 1100, 320, 4000),
       headingColor,
-      heading2Color
+      heading2Color,
+      markdownColors: sanitizeMarkdownColors(p.markdownColors)
     },
     markdown,
     formats: {
