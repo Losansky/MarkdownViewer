@@ -39,10 +39,12 @@ Then use the menu **File → Open Folder…** (or **Open File…** / `Ctrl+O`) a
 | `npm run sbom` | Generate `build/sbom.json` (CycloneDX, used by Help → About) |
 | `npm start` | Run the production build (after `build`) |
 | `npm run test:security` | Security helper unit checks |
+| `npm run test:audit` | npm audit + OSV CVE/vulnerability scan (fails on moderate+) |
+| `npm run preflight` | Typecheck, security, tree, unit, smoke, and CVE audit |
 | `npm run test:tree` | Explorer tree unit checks (hidden folders, skip list) |
 | `npm run test:unit` | Shared search, path, math, and config-schema checks |
 | `npm run smoke` | Headless Markdown pipeline smoke test |
-| `npm run dist` | Build the Windows installer and portable exe into `release/` |
+| `npm run dist` | Preflight, then build the Windows installer and portable exe into `release/` |
 
 ## Features
 
@@ -193,17 +195,19 @@ src/shared/             Shared TypeScript types
 - Mermaid `securityLevel` is limited to `strict` or `sandbox`.
 - Only Markdown paths can be opened in-app. Preview links may use `http(s)`, `mailto`, and `tel`; other local types need a confirm dialog and an allowlisted extension.
 - External `http(s)` links open in the system browser.
+- CI and release packaging fail on moderate-or-higher CVEs from `npm audit` and OSV (`npm run test:audit`).
 
 ## Releasing
 
-Version lives in `package.json`. CI runs typecheck, security checks, smoke, and a production compile on every push and pull request to `main`.
+Version lives in `package.json`. CI runs typecheck, security checks, a CVE/OSV vulnerability audit, smoke, and a production compile on every push and pull request to `main`.
 
 To publish a new Windows build:
 
 1. Bump `"version"` in `package.json` (for example `1.1.8`).
 2. Update `CHANGELOG.md` and `RELEASE_NOTES.md`.
-3. Commit the change to `main`.
-4. Tag and push:
+3. Run `npm run preflight` (must pass typecheck, tests, and the CVE/vulnerability audit).
+4. Commit the change to `main`.
+5. Tag and push:
 
 ```bash
 git tag v1.1.8
@@ -211,12 +215,12 @@ git push origin main
 git push origin v1.1.8
 ```
 
-Pushing a `v*` tag runs [.github/workflows/release.yml](.github/workflows/release.yml), which builds the installer and portable exe and attaches them to a GitHub Release.
+Pushing a `v*` tag runs [.github/workflows/release.yml](.github/workflows/release.yml). That workflow runs the same preflight (including npm audit and OSV) **before** compiling the installer/portable exe and **before** publishing the GitHub Release. `npm run dist` locally does the same: it will not package if the CVE gate fails.
 
 ## Contributing
 
 - Open a [bug report](https://github.com/Losansky/MarkdownViewer/issues/new?template=bug_report.yml) or [feature request](https://github.com/Losansky/MarkdownViewer/issues/new?template=feature_request.yml).
-- Keep pull requests focused. Run `npm run typecheck`, `npm run test:security`, and `npm run smoke` before opening a PR.
+- Keep pull requests focused. Run `npm run preflight` before opening a PR.
 - Do not commit `node_modules/`, `out/`, or `release/`.
 
 ## License

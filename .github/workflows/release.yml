@@ -36,8 +36,14 @@ jobs:
       - name: Unit checks
         run: npm run test:unit
 
+      - name: Smoke render
+        run: npm run smoke
+
+      - name: CVE and vulnerability audit
+        run: npm run test:audit
+
       - name: Build Windows installer
-        run: npm run dist
+        run: npm run dist:pack
 
       - name: Collect release artifacts
         shell: pwsh

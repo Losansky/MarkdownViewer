@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Security
+
+- Release packaging (`npm run dist` and the GitHub Release workflow) runs a CVE/OSV vulnerability audit and the existing security tests **before** compiling the installer or publishing
+- `js-yaml` overridden to 4.3.2 (GHSA-2883-xcg3-v3hh)
+
 ## 1.1.8 — 2026-09-20
 
 ### Fixed

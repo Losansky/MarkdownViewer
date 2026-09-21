@@ -25,12 +25,15 @@
     "test:security": "node --experimental-strip-types scripts/security-checks.mts",
     "test:tree": "node --experimental-strip-types scripts/tree-checks.mts",
     "test:unit": "node --experimental-strip-types scripts/unit-checks.mts",
+    "test:audit": "node scripts/cve-check.mjs",
+    "preflight": "npm run typecheck && npm run test:security && npm run test:tree && npm run test:unit && npm run smoke && npm run test:audit",
     "postinstall": "node scripts/ensure-electron.mjs",
     "sbom": "node scripts/generate-sbom.mjs",
     "start": "electron-vite preview",
     "icon": "node scripts/make-icon.mjs",
-    "dist": "npm run sbom && npm run build && node scripts/dist-win.mjs",
-    "dist:dir": "npm run sbom && npm run build && electron-builder --win --dir --publish never"
+    "dist:pack": "npm run sbom && npm run build && node scripts/dist-win.mjs",
+    "dist": "npm run preflight && npm run dist:pack",
+    "dist:dir": "npm run preflight && npm run sbom && npm run build && electron-builder --win --dir --publish never"
   },
   "dependencies": {
     "highlight.js": "^11.12.0",
@@ -51,6 +54,9 @@
     "sharp": "^0.35.4",
     "typescript": "^5.8.2",
     "vite": "^6.2.2"
+  },
+  "overrides": {
+    "js-yaml": "^4.3.2"
   },
   "allowScripts": {
     "electron@43.6.0": true,

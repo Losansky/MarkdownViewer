@@ -28,6 +28,9 @@ jobs:
       - name: Security checks
         run: npm run test:security
 
+      - name: CVE and vulnerability audit
+        run: npm run test:audit
+
       - name: Tree checks
         run: npm run test:tree
 
