@@ -203,16 +203,16 @@ Version lives in `package.json`. CI runs typecheck, security checks, a CVE/OSV v
 
 To publish a new Windows build:
 
-1. Bump `"version"` in `package.json` (for example `1.1.8`).
+1. Bump `"version"` in `package.json` (for example `1.1.9`).
 2. Update `CHANGELOG.md` and `RELEASE_NOTES.md`.
 3. Run `npm run preflight` (must pass typecheck, tests, and the CVE/vulnerability audit).
 4. Commit the change to `main`.
 5. Tag and push:
 
 ```bash
-git tag v1.1.8
+git tag v1.1.9
 git push origin main
-git push origin v1.1.8
+git push origin v1.1.9
 ```
 
 Pushing a `v*` tag runs [.github/workflows/release.yml](.github/workflows/release.yml). That workflow runs the same preflight (including npm audit and OSV) **before** compiling the installer/portable exe and **before** publishing the GitHub Release. `npm run dist` locally does the same: it will not package if the CVE gate fails.

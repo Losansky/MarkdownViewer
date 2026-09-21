@@ -1,6 +1,6 @@
 {
   "name": "markdown-viewer",
-  "version": "1.1.8",
+  "version": "1.1.9",
   "description": "Windows Markdown document viewer with Mermaid and configurable presentation",
   "main": "./out/main/index.js",
   "author": "Losansky",
