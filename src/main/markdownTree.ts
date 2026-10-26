@@ -2,13 +2,21 @@ import { readdirSync, existsSync, statSync, type Dirent } from 'fs'
 import { basename, join } from 'path'
 import type { TreeNode } from '../shared/types'
 
-const MARKDOWN_EXTENSIONS = new Set(['.md', '.markdown', '.mdown', '.mkd'])
+// Keep aligned with src/shared/markdownExtensions.ts
+const PREVIEW_EXTENSIONS = new Set([
+  '.md',
+  '.markdown',
+  '.mdown',
+  '.mkd',
+  '.mmd',
+  '.mermaid'
+])
 
-function isMarkdownFileName(name: string): boolean {
+function isPreviewFileName(name: string): boolean {
   const base = name.replace(/^.*[/\\]/, '')
   const dot = base.lastIndexOf('.')
   if (dot <= 0) return false
-  return MARKDOWN_EXTENSIONS.has(base.slice(dot).toLowerCase())
+  return PREVIEW_EXTENSIONS.has(base.slice(dot).toLowerCase())
 }
 
 /** Build output / VCS internals — not document folders. Hidden dirs like .kiro stay in the tree. */
@@ -68,7 +76,7 @@ function walkMarkdownTree(dirPath: string): TreeNode[] {
           children: childNodes
         })
       }
-    } else if (entry.isFile() && isMarkdownFileName(entry.name)) {
+    } else if (entry.isFile() && isPreviewFileName(entry.name)) {
       nodes.push({
         name: entry.name,
         path: fullPath,

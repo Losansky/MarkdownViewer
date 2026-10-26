@@ -1,11 +1,11 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from 'electron'
+import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, shell } from 'electron'
 import { existsSync, statSync, writeFileSync } from 'fs'
 import { basename, dirname, join } from 'path'
 import { ConfigService } from './configService'
 import { FileService } from './fileService'
 import { RecentService } from './recentService'
 import { SessionService } from './sessionService'
-import { isMarkdownPath } from './security'
+import { isPreviewDocumentPath } from './security'
 import {
   openInExternalEditor,
   resolveDefaultEditor
@@ -31,8 +31,11 @@ import type {
   SessionState,
   FindOptions,
   PathKind,
-  ExportPdfResult
+  ExportPdfResult,
+  PreviewContextMenuRequest
 } from '../shared/types'
+
+const MAX_CLIPBOARD_CHARS = 64_000_000
 
 let mainWindow: BrowserWindow | null = null
 let configService: ConfigService
@@ -92,6 +95,18 @@ function createWindow(): void {
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
   })
+
+  // A failed load never paints, so ready-to-show never fires and the window
+  // stays hidden. The process still holds the single-instance lock, and the
+  // next `npm run dev` exits immediately.
+  mainWindow.webContents.on(
+    'did-fail-load',
+    (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+      if (!isMainFrame || errorCode === -3) return
+      console.error(`Failed to load ${validatedURL}: ${errorDescription} (${errorCode})`)
+      mainWindow?.show()
+    }
+  )
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     // Never open new BrowserWindows; external http(s) only
@@ -256,7 +271,50 @@ function buildOpenWithSubmenu(
   return items
 }
 
-function buildFileContextMenu(filePath: string): Electron.Menu {
+function clipboardString(value: unknown): string {
+  if (typeof value !== 'string' || value.length > MAX_CLIPBOARD_CHARS) return ''
+  return value
+}
+
+function writeClipboardText(text: string): boolean {
+  const safe = clipboardString(text)
+  if (!safe) return false
+  clipboard.writeText(safe)
+  return true
+}
+
+function writeClipboardRich(text: string, html: string): boolean {
+  const safeText = clipboardString(text)
+  const safeHtml = clipboardString(html)
+  if (!safeText || !safeHtml) return false
+  clipboard.write({ text: safeText, html: safeHtml })
+  return true
+}
+
+function previewContextMenuRequest(value: unknown): PreviewContextMenuRequest | null {
+  if (!value || typeof value !== 'object') return null
+  const raw = value as Record<string, unknown>
+  if (typeof raw.filePath !== 'string' || !raw.filePath) return null
+  if (typeof raw.canSystemCopy !== 'boolean') return null
+  if (typeof raw.plainText !== 'string' || typeof raw.markdown !== 'string') return null
+  if (raw.selectionHtml != null && typeof raw.selectionHtml !== 'string') return null
+  if (raw.linkHref != null && typeof raw.linkHref !== 'string') return null
+  const linkHref =
+    typeof raw.linkHref === 'string' && raw.linkHref.length > 0 && raw.linkHref.length <= 8192
+      ? raw.linkHref
+      : null
+  const selectionHtml = clipboardString(raw.selectionHtml)
+  return {
+    filePath: raw.filePath,
+    canSystemCopy: raw.canSystemCopy && selectionHtml.length > 0,
+    selectionHtml: selectionHtml || null,
+    plainText: clipboardString(raw.plainText),
+    markdown: clipboardString(raw.markdown),
+    linkHref
+  }
+}
+
+function fileContextMenuItems(filePath: string): Electron.MenuItemConstructorOptions[] {
   const editors = getEditors()
   const defaultEditor = resolveDefaultEditor(editors)
   const template: Electron.MenuItemConstructorOptions[] = [
@@ -317,6 +375,59 @@ function buildFileContextMenu(filePath: string): Electron.Menu {
     }
   })
 
+  return template
+}
+
+function buildFileContextMenu(filePath: string): Electron.Menu {
+  return Menu.buildFromTemplate(fileContextMenuItems(filePath))
+}
+
+function buildPreviewContextMenu(
+  win: BrowserWindow,
+  request: PreviewContextMenuRequest
+): Electron.Menu {
+  const template: Electron.MenuItemConstructorOptions[] = [
+    {
+      label: 'Copy',
+      accelerator: 'CmdOrCtrl+C',
+      registerAccelerator: false,
+      enabled: request.canSystemCopy,
+      click: () => {
+        if (request.selectionHtml && request.plainText) {
+          writeClipboardRich(request.plainText, request.selectionHtml)
+          return
+        }
+        if (!win.isDestroyed()) win.webContents.copy()
+      }
+    },
+    {
+      label: 'Copy as plain text',
+      enabled: request.plainText.length > 0,
+      click: () => {
+        writeClipboardText(request.plainText)
+      }
+    },
+    {
+      label: 'Copy markdown',
+      enabled: request.markdown.length > 0,
+      click: () => {
+        writeClipboardText(request.markdown)
+      }
+    }
+  ]
+
+  if (request.linkHref) {
+    const href = request.linkHref
+    template.push({
+      label: 'Copy link',
+      click: () => {
+        writeClipboardText(href)
+      }
+    })
+  }
+
+  template.push({ type: 'separator' })
+  template.push(...fileContextMenuItems(request.filePath))
   return Menu.buildFromTemplate(template)
 }
 
@@ -434,6 +545,22 @@ function buildMenu(): void {
     {
       label: 'Edit',
       submenu: [
+        { role: 'copy' },
+        {
+          label: 'Copy as plain text',
+          enabled: hasActiveFile,
+          click: () => {
+            sendCommand('copy-plain')
+          }
+        },
+        {
+          label: 'Copy markdown',
+          enabled: hasActiveFile,
+          click: () => {
+            sendCommand('copy-markdown')
+          }
+        },
+        { type: 'separator' },
         {
           label: 'Find…',
           accelerator: 'CmdOrCtrl+F',
@@ -787,6 +914,27 @@ function registerIpc(): void {
     })
   })
 
+  ipcMain.handle('preview:contextMenu', async (event, request: unknown) => {
+    if (!isTrustedSender(event)) return
+    const parsed = previewContextMenuRequest(request)
+    if (!parsed) return
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!win) return
+    const menu = buildPreviewContextMenu(win, parsed)
+    await new Promise<void>((resolve) => {
+      menu.popup({
+        window: win,
+        callback: () => resolve()
+      })
+    })
+  })
+
+  ipcMain.handle('clipboard:writeText', async (event, text: unknown) => {
+    if (!isTrustedSender(event)) return false
+    if (typeof text !== 'string') return false
+    return writeClipboardText(text)
+  })
+
   ipcMain.handle(
     'search:folder',
     async (event, rootPath: string, query: string, options?: FindOptions): Promise<SearchHit[]> => {
@@ -815,7 +963,7 @@ function collectOpenTargets(argv: string[]): { files: string[]; folders: string[
       if (!existsSync(arg)) continue
       const stat = statSync(arg)
       if (stat.isDirectory()) folders.push(arg)
-      else if (isMarkdownPath(arg)) files.push(arg)
+      else if (isPreviewDocumentPath(arg)) files.push(arg)
     } catch {
       // skip
     }
@@ -835,11 +983,17 @@ function openArgvTargets(argv: string[]): void {
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock()
 if (!gotSingleInstanceLock) {
+  // The existing process owns the window. This launch exits on purpose.
+  // Say why, or `npm run dev` looks like it died with no window.
+  console.log('MarkDown Viewer is already running. Bringing that window forward.')
   app.quit()
 } else {
 app.on('second-instance', (_event, argv) => {
   if (mainWindow) {
     if (mainWindow.isMinimized()) mainWindow.restore()
+    // A window created with show:false is not on screen until ready-to-show.
+    // focus() does not show it, so a second launch would find nothing.
+    if (!mainWindow.isVisible()) mainWindow.show()
     mainWindow.focus()
   }
   if (fileService) openArgvTargets(argv)

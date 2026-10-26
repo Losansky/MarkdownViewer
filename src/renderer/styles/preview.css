@@ -1154,9 +1154,15 @@ body {
   background: transparent;
 }
 
+#preview .mermaid-document {
+  margin: 0;
+}
+
 #preview .mermaid svg {
+  display: block;
   max-width: 100%;
   height: auto;
+  margin: 0 auto;
 }
 
 /* Math */

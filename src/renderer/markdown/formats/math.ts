@@ -208,8 +208,12 @@ export function restoreMathPlaceholders(html: string, slots: string[]): string {
     (_whole, attrs: string, i: string) => {
       const slot = slots[Number(i)] ?? ''
       const line = /data-source-line="(\d+)"/.exec(attrs)?.[1]
-      if (line && slot.startsWith('<') && !/\sdata-source-line=/.test(slot.slice(0, 120))) {
-        return slot.replace(/^<[a-zA-Z][\w:-]*/, (tag) => `${tag} data-source-line="${line}"`)
+      const end = /data-source-line-end="(\d+)"/.exec(attrs)?.[1]
+      if (line && slot.startsWith('<') && !/\sdata-source-line=/.test(slot.slice(0, 180))) {
+        return slot.replace(/^<[a-zA-Z][\w:-]*/, (tag) => {
+          const endAttr = end ? ` data-source-line-end="${end}"` : ''
+          return `${tag} data-source-line="${line}"${endAttr}`
+        })
       }
       return slot
     }

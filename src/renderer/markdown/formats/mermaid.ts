@@ -3,6 +3,39 @@ import type { MermaidFormatConfig } from '../../../shared/types'
 
 let lastInitKey: string | null = null
 
+const MERMAID_FENCE_LANGS = new Set(['mermaid', 'mmd'])
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+function isMermaidLang(lang: string, fenceName: string): boolean {
+  return lang === fenceName || MERMAID_FENCE_LANGS.has(lang)
+}
+
+function diagramLineEnd(source: string): number {
+  if (!source) return 1
+  let n = 1
+  for (let i = 0; i < source.length; i++) {
+    if (source.charCodeAt(i) === 10) n++
+  }
+  return n
+}
+
+/** Whole `.mmd` / `.mermaid` file, ready for `renderMermaidDiagrams` to replace with SVG. */
+export function mermaidDocumentHtml(source: string): string {
+  const body = source.replace(/\s+$/, '')
+  const end = diagramLineEnd(body)
+  return (
+    `<div class="mermaid-wrap mermaid-document" data-source-line="1" data-source-line-end="${end}">` +
+    `<pre class="mermaid">${escapeHtml(body)}</pre></div>\n`
+  )
+}
+
 export function applyMermaidFence(md: MarkdownIt, config: MermaidFormatConfig): void {
   if (!config.enabled) return
 
@@ -16,7 +49,7 @@ export function applyMermaidFence(md: MarkdownIt, config: MermaidFormatConfig): 
     const info = (token.info || '').trim().toLowerCase()
     const lang = info.split(/\s+/)[0] ?? ''
 
-    if (lang === fenceName) {
+    if (isMermaidLang(lang, fenceName)) {
       const source = token.content.trimEnd()
       const escaped = md.utils.escapeHtml(source)
       return `<div class="mermaid-wrap"><pre class="mermaid">${escaped}</pre></div>\n`

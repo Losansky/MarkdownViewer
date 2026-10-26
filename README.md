@@ -49,14 +49,15 @@ Then use the menu **File → Open Folder…** (or **Open File…** / `Ctrl+O`) a
 ## Features
 
 - Native **File** menu: Open File, Open Folder, Open Recent, Reload, Close Tab
+- **Edit** and preview right-click: **Copy** (system selection, including formatting), **Copy as plain text**, and **Copy markdown**. With nothing selected, plain text and Markdown copy the whole document. Right-click a link for **Copy link**.
 - **Open in external editor** (configured editors + default; File menu and context menus)
 - **Dark mode** theme (`View → Theme`, or `Ctrl+Shift+D`)
 - **Recent files & folders** (persisted under userData; welcome screen + sidebar + menu)
-- **Left sidebar** explorer: folder tree of Markdown files, including hidden folders such as `.kiro` and `.grok`
+- **Left sidebar** explorer: folder tree of Markdown and Mermaid files, including hidden folders such as `.kiro` and `.grok`
 - **Tabs** for multiple open documents (middle-click or × to close); last session is restored on launch
 - **Relative links** resolve against the open file (e.g. `chapters/_index.md` opens that path in a tab)
 - GFM-style Markdown (tables, task lists, strikethrough, autolinks)
-- **Mermaid** fenced blocks (` ```mermaid `)
+- **Mermaid** diagrams as SVG graphics from fenced blocks (` ```mermaid ` or ` ```mmd `) and from `.mmd` / `.mermaid` files (File → Open, the folder tree, drag and drop, or a relative link). See `samples/diagram.mmd`
 - **Math** via KaTeX (`$…$`, `$$…$$`, ` ```math `)
 - **Syntax highlighting** (highlight.js), with optional line numbers in code fences
 - **GitHub-style admonitions** (`> [!NOTE]`, etc.)
@@ -65,7 +66,7 @@ Then use the menu **File → Open Folder…** (or **Open File…** / `Ctrl+O`) a
 - **Table of contents** (`View` / `Options`, `Ctrl+Shift+T`) from headings in the open file
 - **Find** (`Ctrl+F`) in the current file, all open files, or the open folder, with match-case / whole-word / regex
 - **Options** menu: show/hide a left line-number bar on the document (`Ctrl+L`)
-- Drag and drop Markdown files or folders onto the window
+- Drag and drop Markdown files, Mermaid diagram files, or folders onto the window
 - **Print** and **Export PDF**
 - **Help → About** with app version and a scrollable SBOM (packages + CycloneDX JSON)
 - User **presentation.json** with schema; changes reload live when the config file is saved
@@ -155,7 +156,8 @@ Configure editors under `editors` in `presentation.json`:
 
 - **File → Open in …** (`Ctrl+E`) — default editor for the active tab
 - **File → Open with** — pick any configured editor (or system default)
-- **Right-click** a tab, tree file, or the preview — context menu with default + other editors
+- **Right-click** a tab or tree file — context menu with default + other editors
+- **Right-click** the preview — **Copy**, **Copy as plain text**, **Copy markdown**, then the same editor actions. **Copy** uses the system clipboard for the current selection (formatted when the destination supports it). **Copy as plain text** copies the selection, or the whole rendered document if nothing is selected. **Copy markdown** copies the source lines for the selection, or the whole file.
 
 If `list` is empty, the app falls back to the OS file association.
 
@@ -181,6 +183,7 @@ When mermaid `theme` is `"default"` (or `"auto"`), diagrams follow the app theme
 ```
 config/                 Default JSON config + schema
 samples/demo.md         Feature showcase
+samples/diagram.mmd     Standalone Mermaid diagram (rendered as SVG)
 src/main/               Electron main process (dialog, FS, IPC)
 src/preload/            contextBridge API
 src/renderer/           UI + Markdown pipeline + format modules
@@ -193,7 +196,7 @@ src/shared/             Shared TypeScript types
 - `contextIsolation` is on, the renderer is sandboxed, and Node is not exposed.
 - Raw HTML in Markdown is forced off (`markdown.html: false`) unless `MDV_ALLOW_HTML=1` in a dev build.
 - Mermaid `securityLevel` is limited to `strict` or `sandbox`.
-- Only Markdown paths can be opened in-app. Preview links may use `http(s)`, `mailto`, and `tel`; other local types need a confirm dialog and an allowlisted extension.
+- Only Markdown and Mermaid diagram paths (`.mmd`, `.mermaid`) can be opened in-app. Preview links may use `http(s)`, `mailto`, and `tel`; other local types need a confirm dialog and an allowlisted extension.
 - External `http(s)` links open in the system browser.
 - CI and release packaging fail on moderate-or-higher CVEs from `npm audit` and OSV (`npm run test:audit`).
 
@@ -203,16 +206,16 @@ Version lives in `package.json`. CI runs typecheck, security checks, a CVE/OSV v
 
 To publish a new Windows build:
 
-1. Bump `"version"` in `package.json` (for example `1.1.9`).
+1. Bump `"version"` in `package.json` (for example `1.1.10`).
 2. Update `CHANGELOG.md` and `RELEASE_NOTES.md`.
 3. Run `npm run preflight` (must pass typecheck, tests, and the CVE/vulnerability audit).
 4. Commit the change to `main`.
 5. Tag and push:
 
 ```bash
-git tag v1.1.9
+git tag v1.1.10
 git push origin main
-git push origin v1.1.9
+git push origin v1.1.10
 ```
 
 Pushing a `v*` tag runs [.github/workflows/release.yml](.github/workflows/release.yml). That workflow runs the same preflight (including npm audit and OSV) **before** compiling the installer/portable exe and **before** publishing the GitHub Release. `npm run dist` locally does the same: it will not package if the CVE gate fails.

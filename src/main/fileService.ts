@@ -10,7 +10,7 @@ import type {
   SearchHit,
   FindOptions
 } from '../shared/types'
-import { isMarkdownPath } from './security'
+import { isPreviewDocumentPath } from './security'
 import { buildMarkdownTree } from './markdownTree'
 import { collectTextHits, SEARCH_MAX_HITS } from '../shared/search'
 import { pathsEqual } from '../shared/pathUtils'
@@ -21,7 +21,12 @@ export { buildMarkdownTree }
 const SEARCH_MAX_FILE_BYTES = 2 * 1024 * 1024
 
 const MARKDOWN_FILTERS = [
+  {
+    name: 'Markdown and Mermaid',
+    extensions: ['md', 'markdown', 'mdown', 'mkd', 'mmd', 'mermaid']
+  },
   { name: 'Markdown', extensions: ['md', 'markdown', 'mdown', 'mkd'] },
+  { name: 'Mermaid diagrams', extensions: ['mmd', 'mermaid'] },
   { name: 'All Files', extensions: ['*'] }
 ]
 
@@ -54,7 +59,7 @@ export class FileService {
   async openWithDialog(): Promise<OpenedFilePayload | null> {
     const win = this.getWindow()
     const options: Electron.OpenDialogOptions = {
-      title: 'Open Markdown file',
+      title: 'Open Markdown or Mermaid file',
       properties: ['openFile'],
       filters: MARKDOWN_FILTERS
     }
@@ -116,8 +121,8 @@ export class FileService {
 
   openPath(filePath: string): OpenedFilePayload | null {
     try {
-      if (!isMarkdownPath(filePath)) {
-        this.onError({ path: filePath, message: `Not a Markdown file: ${filePath}` })
+      if (!isPreviewDocumentPath(filePath)) {
+        this.onError({ path: filePath, message: `Not a Markdown or Mermaid file: ${filePath}` })
         return null
       }
       if (!existsSync(filePath)) {

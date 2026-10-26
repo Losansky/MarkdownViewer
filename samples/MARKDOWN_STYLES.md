@@ -31,7 +31,7 @@ Toggle **View → Theme** to compare light and dark.
 | Markdown | HTML / class | Where to change |
 |---|---|---|
 | ` ```lang ` fence | `pre` / highlight.js | `formats.codeHighlight.theme` |
-| ` ```mermaid ` | `.mermaid` | `formats.mermaid.themeVariables` / `themeVariablesDark` |
+| ` ```mermaid ` / ` ```mmd ` / `.mmd` | `.mermaid` (SVG) | `formats.mermaid.themeVariables` / `themeVariablesDark` |
 | `$math$` / `$$` | `.math-inline` / `.math-block` | inherits body color |
 | `> [!NOTE]` | `.admonition-note` | `formats.admonitions.types.note.color` |
 | `> [!TIP]` | `.admonition-tip` | `formats.admonitions.types.tip.color` |

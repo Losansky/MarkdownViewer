@@ -1,9 +1,11 @@
 import type { MermaidFormatConfig, PresentationConfig } from '../../shared/types'
 import { MARKDOWN_COLOR_KEYS } from '../../shared/markdownColors'
+import { isMermaidDiagramPath } from '../../shared/markdownExtensions'
 import { createPipeline } from '../markdown/createPipeline'
-import { renderMermaidDiagrams } from '../markdown/formats/mermaid'
+import { mermaidDocumentHtml, renderMermaidDiagrams } from '../markdown/formats/mermaid'
 import { highlightThemeHref } from '../markdown/formats/codeHighlight'
 import { LineGutterController } from './lineGutter'
+import { buildPreviewCopyPayload, selectedFieldText } from './previewCopy'
 
 const highlightThemeLoaders: Record<string, () => Promise<{ default: string }>> = {
   github: () => import('highlight.js/styles/github.min.css?url'),
@@ -132,6 +134,30 @@ export class PreviewController {
     return this.path
   }
 
+  getSource(): string {
+    return this.content
+  }
+
+  /** Selection as plain text, or the whole rendered document. A focused field wins. */
+  copyPlainText(): void {
+    const field = selectedFieldText()
+    const text = field ?? buildPreviewCopyPayload(this.previewEl, this.content, null).plainText
+    this.writeClipboard(text)
+  }
+
+  /** Markdown source for the selection, or the whole file when nothing in the preview is selected. */
+  copyMarkdown(): void {
+    const text = buildPreviewCopyPayload(this.previewEl, this.content, null).markdown
+    this.writeClipboard(text)
+  }
+
+  private writeClipboard(text: string): void {
+    if (!text) return
+    void window.api.writeClipboard(text).catch(() => {
+      this.showError('Could not copy to the clipboard.')
+    })
+  }
+
   clear(): void {
     this.path = null
     this.content = ''
@@ -231,19 +257,24 @@ export class PreviewController {
   private async render(source: string, scrollHash?: string | null): Promise<void> {
     const token = ++this.renderToken
     try {
-      const { html } = this.pipeline.render(source, { documentPath: this.path })
+      const diagram = isMermaidDiagramPath(this.path ?? '')
+      const html = diagram
+        ? mermaidDocumentHtml(source)
+        : this.pipeline.render(source, { documentPath: this.path }).html
       if (token !== this.renderToken) return
       this.previewEl.innerHTML = html
 
+      const mermaidConfig = resolveMermaidConfig(this.config)
       const mermaidErrors = await renderMermaidDiagrams(
         this.previewEl,
-        resolveMermaidConfig(this.config)
+        diagram ? { ...mermaidConfig, enabled: true } : mermaidConfig
       )
       if (token !== this.renderToken) return
       if (mermaidErrors.length > 0) {
         this.showError(`Mermaid: ${mermaidErrors[0]}`)
       }
-      this.lineGutter?.setSource(source)
+      // A diagram is one graphic. Do not lay source line numbers beside the SVG.
+      this.lineGutter?.setSource(diagram ? '' : source)
       if (scrollHash) {
         // Defer until layout after mermaid
         requestAnimationFrame(() => this.scrollToHash(scrollHash))

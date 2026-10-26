@@ -15,6 +15,7 @@ import { dispatchCommand } from './app/commands'
 import { bindKeyboardShortcuts } from './app/shortcuts'
 import { bindFileDrop } from './app/drop'
 import type { AppContext } from './app/context'
+import { buildPreviewCopyPayload } from './ui/previewCopy'
 
 const appEl = document.getElementById('app') as HTMLElement
 const sidebarEl = document.getElementById('sidebar') as HTMLElement
@@ -290,11 +291,19 @@ async function init(): Promise<void> {
     openActiveInEditor
   }
 
-  previewEl.addEventListener('contextmenu', (e) => {
+  previewEl.addEventListener('contextmenu', (event) => {
     const path = tabs.getActivePath()
     if (!path) return
-    e.preventDefault()
-    showContextMenuFor(path)
+    event.preventDefault()
+    const payload = buildPreviewCopyPayload(previewEl, preview.getSource(), event.target)
+    void window.api.showPreviewContextMenu({
+      filePath: path,
+      canSystemCopy: payload.canSystemCopy,
+      selectionHtml: payload.selectionHtml,
+      plainText: payload.plainText,
+      markdown: payload.markdown,
+      linkHref: payload.linkHref
+    })
   })
 
   bindFileDrop(appEl, {

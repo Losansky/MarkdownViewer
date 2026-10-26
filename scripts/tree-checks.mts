@@ -23,11 +23,13 @@ try {
   mkdirSync(join(root, 'node_modules', 'pkg'), { recursive: true })
   writeFileSync(join(root, 'node_modules', 'pkg', 'README.md'), '# skip\n')
   writeFileSync(join(root, '.hidden-note.md'), '# hidden file\n')
+  writeFileSync(join(root, 'diagram.mmd'), 'flowchart LR\n  A-->B\n')
+  writeFileSync(join(root, 'notes.txt'), 'not a preview file\n')
 
   const tree = buildMarkdownTree(root)
   assert.ok(tree, 'tree should be built')
   const names = (tree.children ?? []).map((n) => n.name).sort()
-  assert.deepEqual(names, ['.grok', '.kiro', '.hidden-note.md', 'readme.md'].sort())
+  assert.deepEqual(names, ['.grok', '.kiro', '.hidden-note.md', 'diagram.mmd', 'readme.md'].sort())
 
   const kiro = tree.children?.find((n) => n.name === '.kiro')
   assert.equal(kiro?.type, 'directory')

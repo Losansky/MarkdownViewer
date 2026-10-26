@@ -1,4 +1,4 @@
-import { isMarkdownPath } from '../../shared/markdownExtensions'
+import { isPreviewDocumentPath } from '../../shared/markdownExtensions'
 
 export function bindFileDrop(
   target: HTMLElement,
@@ -46,7 +46,7 @@ async function handleDroppedFiles(
     const kind = await handlers.pathKind(filePath)
     if (kind === 'directory') {
       await handlers.openFolder(filePath)
-    } else if (kind === 'file' && isMarkdownPath(filePath)) {
+    } else if (kind === 'file' && isPreviewDocumentPath(filePath)) {
       await handlers.openFile(filePath)
     }
   }

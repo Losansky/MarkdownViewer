@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.1.10 — 2026-10-25
+
+### Added
+
+- Right-click the preview for **Copy**, **Copy as plain text**, and **Copy markdown**. **Copy** puts the selection on the clipboard as plain text and HTML, the same formats as a system copy. **Copy as plain text** copies only unformatted text. **Copy markdown** copies the source lines that cover the selection. With nothing selected, plain text and Markdown copy the whole document. A link under the pointer adds **Copy link**
+- The same three commands are on the **Edit** menu
+- Mermaid `.mmd` and `.mermaid` files open in the preview and render as SVG graphics. Markdown fences labeled `mmd` render the same way as `mermaid`
+
+### Fixed
+
+- A second `npm run dev` while the app is already running brings that window forward and prints why, instead of exiting with no window
+
+### Security
+
+- Electron 43.8.3, markdown-it 14.3.3, Vite 6.4.5, sharp 0.35.5, DOMPurify 3.4.17
+- Mermaid 12.2.0 (its KaTeX stays on 0.18.10); the viewer uses KaTeX 0.19.1
+- Transitive overrides: fast-uri 3.1.9, http-cache-semantics 4.3.0, source-map-js 1.2.2, undici 6.29.1 and 7.30.1
+- Rechecked 2026-10-25: these are the newest releases on the current majors, and npm audit and OSV report no moderate or higher vulnerabilities. Electron 45, Vite 8, markdown-it 15, and TypeScript 7 were not required for a published fix
+
 ## 1.1.9 — 2026-09-21
 
 ### Security

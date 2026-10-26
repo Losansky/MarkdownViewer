@@ -9,6 +9,7 @@ import {
   isDangerousHref,
   isMarkdownPath,
   isOsOpenablePath,
+  isPreviewDocumentPath,
   isUnsafeMergeKey
 } from '../src/main/security.ts'
 import type { PresentationConfig } from '../src/shared/types.ts'
@@ -97,6 +98,10 @@ assert.equal(isMarkdownPath('C:\\docs\\note.md'), true)
 assert.equal(isMarkdownPath('C:\\docs\\note.markdown'), true)
 assert.equal(isMarkdownPath('C:\\docs\\note.exe'), false)
 assert.equal(isMarkdownPath('C:\\docs\\note.md.txt'), false)
+assert.equal(isMarkdownPath('C:\\docs\\flow.mmd'), false)
+assert.equal(isPreviewDocumentPath('C:\\docs\\flow.mmd'), true)
+assert.equal(isPreviewDocumentPath('C:\\docs\\flow.mermaid'), true)
+assert.equal(isPreviewDocumentPath('C:\\docs\\note.exe'), false)
 
 assert.equal(isOsOpenablePath('C:\\docs\\spec.pdf'), true)
 assert.equal(isOsOpenablePath('C:\\docs\\photo.png'), true)

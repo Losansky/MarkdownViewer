@@ -48,12 +48,27 @@ const checks: Array<[string, boolean]> = [
   ['currency table not math-error', !currencyHtml.includes('math-error')],
   ['currency table does not swallow heading', /<h2[^>]*>After table<\/h2>/i.test(currencyHtml)],
   ['mermaid flowchart', html.includes('class="mermaid"') && html.includes('flowchart LR')],
+  [
+    'mmd fence',
+    (() => {
+      const mmdHtml = createPipeline(config).render('```mmd\nflowchart LR\n  A-->B\n```\n').html
+      return (
+        mmdHtml.includes('class="mermaid"') &&
+        mmdHtml.includes('flowchart LR') &&
+        !mmdHtml.includes('hljs')
+      )
+    })()
+  ],
   ['task list', /task-list-item|checkbox/i.test(html)],
   ['heading', /<h1[\s>]/i.test(html)],
   ['heading id', /<h[1-6][^>]*\sid="/i.test(html)],
   ['code fence', /<pre[\s>]/i.test(html)],
   ['math', /class="math-block"|class="math-inline"|katex/i.test(html)],
   ['source line attrs', /data-source-line="1"/.test(html)],
+  [
+    'source line end',
+    /data-source-line="1"[^>]*data-source-line-end="1"/.test(html)
+  ],
   ['line numbers off by default', !html.includes('hljs-ln-num')],
   ['line numbers gutter', numbered.includes('hljs-line-numbers') && numbered.includes('hljs-ln-num')],
   ['line numbers 1 and 2', />1<\/span>/.test(numbered) && />2<\/span>/.test(numbered)],

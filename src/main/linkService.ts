@@ -7,7 +7,7 @@ import type { OpenLinkResult } from '../shared/types'
 import {
   isAllowedExternalHref,
   isDangerousHref,
-  isMarkdownPath,
+  isPreviewDocumentPath,
   isOsOpenablePath
 } from './security'
 import { splitHash } from '../shared/linkResolve'
@@ -105,7 +105,7 @@ export async function openMarkdownLink(
     }
   }
 
-  if (isMarkdownPath(target)) {
+  if (isPreviewDocumentPath(target)) {
     const opened = fileService.openPath(target)
     if (!opened) {
       return {

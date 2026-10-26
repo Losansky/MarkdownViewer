@@ -20,7 +20,9 @@ const MARKDOWN_COLOR_KEY_SET = new Set([
   'th'
 ])
 
-export const MARKDOWN_EXTENSIONS = new Set(['.md', '.markdown', '.mdown', '.mkd'])
+// Keep aligned with src/shared/markdownExtensions.ts
+const MARKDOWN_EXTENSIONS = new Set(['.md', '.markdown', '.mdown', '.mkd'])
+const MERMAID_EXTENSIONS = new Set(['.mmd', '.mermaid'])
 
 const CSS_COLOR =
   /^(#[0-9a-f]{3,8}|rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)|rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*[\d.]+\s*\)|[a-z]+)$/i
@@ -135,6 +137,11 @@ export function deepMerge<T extends Record<string, unknown>>(base: T, override: 
 
 export function isMarkdownPath(filePath: string): boolean {
   return MARKDOWN_EXTENSIONS.has(extname(filePath).toLowerCase())
+}
+
+export function isPreviewDocumentPath(filePath: string): boolean {
+  const ext = extname(filePath).toLowerCase()
+  return MARKDOWN_EXTENSIONS.has(ext) || MERMAID_EXTENSIONS.has(ext)
 }
 
 export function isOsOpenablePath(filePath: string): boolean {

@@ -146,6 +146,19 @@ export type AppCommand =
   | 'print'
   | 'export-pdf'
   | 'about'
+  | 'copy-plain'
+  | 'copy-markdown'
+
+/** Right-click payload for the preview. Strings are captured when the menu opens. */
+export interface PreviewContextMenuRequest {
+  filePath: string
+  canSystemCopy: boolean
+  /** HTML fragment captured with the selection. Null when Copy should stay disabled. */
+  selectionHtml: string | null
+  plainText: string
+  markdown: string
+  linkHref: string | null
+}
 
 export type FindScope = 'current' | 'open-files' | 'folder'
 
@@ -228,6 +241,8 @@ export interface AppApi {
   saveSession: (state: SessionState) => Promise<void>
   openInEditor: (filePath: string, editorId?: string | null) => Promise<OpenEditorResult>
   showFileContextMenu: (filePath: string) => Promise<void>
+  showPreviewContextMenu: (request: PreviewContextMenuRequest) => Promise<void>
+  writeClipboard: (text: string) => Promise<boolean>
   searchFolder: (
     rootPath: string,
     query: string,

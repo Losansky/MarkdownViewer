@@ -1,6 +1,6 @@
 {
   "name": "markdown-viewer",
-  "version": "1.1.9",
+  "version": "1.1.10",
   "description": "Windows Markdown document viewer with Mermaid and configurable presentation",
   "main": "./out/main/index.js",
   "author": "Losansky",
@@ -37,30 +37,41 @@
   },
   "dependencies": {
     "highlight.js": "^11.12.0",
-    "katex": "^0.18.6",
-    "markdown-it": "^14.3.1",
+    "katex": "^0.19.1",
+    "markdown-it": "^14.3.3",
     "markdown-it-multimd-table": "^4.2.3",
     "markdown-it-task-lists": "^2.1.1",
-    "mermaid": "^11.17.2"
+    "mermaid": "^12.2.0"
   },
   "devDependencies": {
     "@types/katex": "^0.16.7",
     "@types/markdown-it": "^14.2.0",
-    "@types/node": "^22.13.10",
-    "electron": "^43.6.0",
-    "electron-builder": "^26.15.3",
+    "@types/node": "^22.20.5",
+    "electron": "^43.8.3",
+    "electron-builder": "^26.18.0",
     "electron-vite": "^3.0.0",
     "png-to-ico": "^3.0.1",
-    "sharp": "^0.35.4",
+    "sharp": "^0.35.5",
     "typescript": "^5.8.2",
-    "vite": "^6.2.2"
+    "vite": "^6.4.5"
   },
   "overrides": {
-    "js-yaml": "^4.3.2"
+    "js-yaml": "^4.3.2",
+    "dompurify": "^3.4.17",
+    "fast-uri": "^3.1.9",
+    "http-cache-semantics": "^4.2.1",
+    "source-map-js": "^1.2.2",
+    "mermaid": {
+      "katex": "0.18.10"
+    },
+    "@electron/get": {
+      "undici": "^7.30.1"
+    }
   },
   "allowScripts": {
-    "electron@43.6.0": true,
-    "esbuild@0.25.12": true
+    "electron@43.8.3": true,
+    "esbuild@0.25.12": true,
+    "electron-winstaller@5.4.0": true
   },
   "build": {
     "appId": "com.terry.markdown-viewer",

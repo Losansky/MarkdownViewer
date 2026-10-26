@@ -77,5 +77,11 @@ export async function dispatchCommand(ctx: AppContext, command: AppCommand): Pro
       ctx.aboutDialog.show(info)
       break
     }
+    case 'copy-plain':
+      ctx.preview.copyPlainText()
+      break
+    case 'copy-markdown':
+      ctx.preview.copyMarkdown()
+      break
   }
 }

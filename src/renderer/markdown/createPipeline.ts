@@ -68,6 +68,8 @@ export function createPipeline(config: PresentationConfig): {
   const reserved = new Set<string>()
   if (config.formats.mermaid.enabled) {
     reserved.add((config.formats.mermaid.fence || 'mermaid').toLowerCase())
+    reserved.add('mermaid')
+    reserved.add('mmd')
   }
   if (config.formats.math.enabled) {
     reserved.add('math')
@@ -131,8 +133,12 @@ function applyTableWrap(md: MarkdownIt): void {
     ((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options))
 
   md.renderer.rules.table_open = (tokens, idx, options, env, self) => {
-    const line = tokens[idx].attrGet('data-source-line')
-    const attr = line ? ` data-source-line="${md.utils.escapeHtml(line)}"` : ''
+    const token = tokens[idx]
+    const line = token.attrGet('data-source-line')
+    const end = token.attrGet('data-source-line-end')
+    const attr =
+      (line ? ` data-source-line="${md.utils.escapeHtml(line)}"` : '') +
+      (end ? ` data-source-line-end="${md.utils.escapeHtml(end)}"` : '')
     return `<div class="table-wrap"${attr}>${open(tokens, idx, options, env, self)}`
   }
   md.renderer.rules.table_close = (tokens, idx, options, env, self) => {

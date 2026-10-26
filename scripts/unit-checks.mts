@@ -7,7 +7,12 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { collectTextHits, findRanges, searchDocuments, SEARCH_MAX_HITS } from '../src/shared/search.ts'
 import { fileName, pathsEqual, splitHash, resolveRelativePath, pdfExportFileName } from '../src/shared/pathUtils.ts'
-import { isMarkdownPath } from '../src/shared/markdownExtensions.ts'
+import {
+  isMarkdownPath,
+  isMermaidDiagramPath,
+  isPreviewDocumentPath
+} from '../src/shared/markdownExtensions.ts'
+import { mermaidDocumentHtml } from '../src/renderer/markdown/formats/mermaid.ts'
 import { sanitizeCssColor } from '../src/shared/cssUtils.ts'
 import { slugifyHeading } from '../src/shared/headingSlug.ts'
 import { validatePresentationConfig } from '../src/main/configValidation.ts'
@@ -16,7 +21,12 @@ import {
   preprocessMathWithPlaceholders,
   restoreMathPlaceholders
 } from '../src/renderer/markdown/formats/math.ts'
-import { countSourceLines, injectFirstTagAttr } from '../src/renderer/markdown/sourceLines.ts'
+import {
+  countSourceLines,
+  injectFirstTagAttr,
+  parseSourceLineRange,
+  sliceSourceLines
+} from '../src/renderer/markdown/sourceLines.ts'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { readFileWhenStable, tryStatFile } from '../src/main/fileStability.ts'
@@ -60,6 +70,19 @@ assert.deepEqual(splitHash('chapters/_index.md#intro'), {
 assert.equal(isMarkdownPath(String.raw`C:\docs\note.md`), true)
 assert.equal(isMarkdownPath(String.raw`C:\docs\note.md.txt`), false)
 assert.equal(isMarkdownPath('.hidden.md'), true)
+assert.equal(isMarkdownPath(String.raw`C:\docs\flow.mmd`), false)
+assert.equal(isMermaidDiagramPath(String.raw`C:\docs\flow.mmd`), true)
+assert.equal(isMermaidDiagramPath(String.raw`C:\docs\flow.MERMAID`), true)
+assert.equal(isMermaidDiagramPath(String.raw`C:\docs\flow.mmd.txt`), false)
+assert.equal(isPreviewDocumentPath(String.raw`C:\docs\note.md`), true)
+assert.equal(isPreviewDocumentPath(String.raw`C:\docs\flow.mmd`), true)
+assert.equal(isPreviewDocumentPath(String.raw`C:\docs\note.exe`), false)
+
+const diagramHtml = mermaidDocumentHtml('flowchart LR\n  A["<script>"] --> B\n')
+assert.equal(diagramHtml.includes('<script>'), false)
+assert.equal(diagramHtml.includes('&lt;script&gt;'), true)
+assert.equal(diagramHtml.includes('class="mermaid"'), true)
+assert.equal(diagramHtml.includes('mermaid-document'), true)
 
 assert.equal(sanitizeCssColor('#0969da'), '#0969da')
 assert.equal(sanitizeCssColor('javascript:alert(1)'), '#0969da')
@@ -80,6 +103,24 @@ assert.equal(
   '<pre data-source-line="4" class="hljs">x</pre>'
 )
 assert.equal(injectFirstTagAttr('<hr>', 'data-source-line', '2'), '<hr data-source-line="2">')
+assert.equal(
+  injectFirstTagAttr(
+    injectFirstTagAttr('<pre class="hljs">x</pre>', 'data-source-line', '4'),
+    'data-source-line-end',
+    '9'
+  ),
+  '<pre data-source-line-end="9" data-source-line="4" class="hljs">x</pre>'
+)
+assert.deepEqual(parseSourceLineRange('4', '9'), { start: 4, end: 9 })
+assert.deepEqual(parseSourceLineRange('4', null), { start: 4, end: 4 })
+assert.deepEqual(parseSourceLineRange('4', '2'), { start: 4, end: 4 })
+assert.equal(parseSourceLineRange('0', '2'), null)
+assert.equal(parseSourceLineRange('x', '2'), null)
+assert.equal(sliceSourceLines('a\nb\nc', 1, 2), 'a\nb')
+assert.equal(sliceSourceLines('a\r\nb\r\nc', 2, 3), 'b\r\nc')
+assert.equal(sliceSourceLines('# Title\n\nHello', 1, 1), '# Title')
+assert.equal(sliceSourceLines('a\nb', 2, 1), '')
+assert.equal(sliceSourceLines('', 1, 1), '')
 
 const mathConfig = {
   enabled: true,
@@ -94,6 +135,15 @@ assert.ok(text.includes('MATHPLACEHOLDER'))
 const restored = restoreMathPlaceholders(`<p>${text}</p>`, slots)
 assert.ok(restored.includes('math-inline') || restored.includes('katex'))
 assert.equal(restored.includes('MATHPLACEHOLDER'), false)
+
+const blockMath = preprocessMathWithPlaceholders('$$\na+b\n$$', mathConfig)
+const restoredBlock = restoreMathPlaceholders(
+  `<p data-source-line="2" data-source-line-end="4">${blockMath.text.trim()}</p>`,
+  blockMath.slots
+)
+assert.ok(restoredBlock.includes('data-source-line="2"'))
+assert.ok(restoredBlock.includes('data-source-line-end="4"'))
+assert.ok(restoredBlock.includes('math-block') || restoredBlock.includes('katex'))
 
 const currencyLine = '| WLY | 25 | $1,202.50 | $48.10 | C | $48.10 | JOHN WILEY | K_Brokerage |'
 const currency = preprocessMathWithPlaceholders(currencyLine, mathConfig)

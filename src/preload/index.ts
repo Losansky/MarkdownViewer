@@ -4,6 +4,7 @@ import type {
   AppCommand,
   OpenedFilePayload,
   FileErrorPayload,
+  PreviewContextMenuRequest,
   PresentationConfig,
   OpenedFolderPayload,
   RecentList,
@@ -47,6 +48,10 @@ const api: AppApi = {
     ipcRenderer.invoke('editor:open', filePath, editorId) as Promise<OpenEditorResult>,
   showFileContextMenu: (filePath: string) =>
     ipcRenderer.invoke('file:contextMenu', filePath) as Promise<void>,
+  showPreviewContextMenu: (request: PreviewContextMenuRequest) =>
+    ipcRenderer.invoke('preview:contextMenu', request) as Promise<void>,
+  writeClipboard: (text: string) =>
+    ipcRenderer.invoke('clipboard:writeText', text) as Promise<boolean>,
   searchFolder: (rootPath: string, query: string, options?: FindOptions) =>
     ipcRenderer.invoke('search:folder', rootPath, query, options) as Promise<SearchHit[]>,
   print: () => ipcRenderer.invoke('app:print') as Promise<void>,
