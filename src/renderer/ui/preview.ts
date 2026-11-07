@@ -3,6 +3,7 @@ import { MARKDOWN_COLOR_KEYS } from '../../shared/markdownColors'
 import { isMermaidDiagramPath } from '../../shared/markdownExtensions'
 import { createPipeline } from '../markdown/createPipeline'
 import { mermaidDocumentHtml, renderMermaidDiagrams } from '../markdown/formats/mermaid'
+import { attachMermaidPanZoom } from '../markdown/formats/mermaidPanZoom'
 import { highlightThemeHref } from '../markdown/formats/codeHighlight'
 import { LineGutterController } from './lineGutter'
 import { buildPreviewCopyPayload, selectedFieldText } from './previewCopy'
@@ -270,6 +271,7 @@ export class PreviewController {
         diagram ? { ...mermaidConfig, enabled: true } : mermaidConfig
       )
       if (token !== this.renderToken) return
+      attachMermaidPanZoom(this.previewEl)
       if (mermaidErrors.length > 0) {
         this.showError(`Mermaid: ${mermaidErrors[0]}`)
       }

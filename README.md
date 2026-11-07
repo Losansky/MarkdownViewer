@@ -57,7 +57,7 @@ Then use the menu **File → Open Folder…** (or **Open File…** / `Ctrl+O`) a
 - **Tabs** for multiple open documents (middle-click or × to close); last session is restored on launch
 - **Relative links** resolve against the open file (e.g. `chapters/_index.md` opens that path in a tab)
 - GFM-style Markdown (tables, task lists, strikethrough, autolinks)
-- **Mermaid** diagrams as SVG graphics from fenced blocks (` ```mermaid ` or ` ```mmd `) and from `.mmd` / `.mermaid` files (File → Open, the folder tree, drag and drop, or a relative link). See `samples/diagram.mmd`
+- **Mermaid** diagrams as SVG graphics from fenced blocks (` ```mermaid ` or ` ```mmd `) and from `.mmd` / `.mermaid` files (File → Open, the folder tree, drag and drop, or a relative link). Each diagram has buttons to zoom in, zoom out, pan left, up, down, and right, and reset the view. Drag the diagram to pan, or hold Ctrl and scroll to zoom. See `samples/diagram.mmd`
 - **Math** via KaTeX (`$…$`, `$$…$$`, ` ```math `)
 - **Syntax highlighting** (highlight.js), with optional line numbers in code fences
 - **GitHub-style admonitions** (`> [!NOTE]`, etc.)
@@ -206,16 +206,16 @@ Version lives in `package.json`. CI runs typecheck, security checks, a CVE/OSV v
 
 To publish a new Windows build:
 
-1. Bump `"version"` in `package.json` (for example `1.1.10`).
+1. Bump `"version"` in `package.json` (for example `1.1.11`).
 2. Update `CHANGELOG.md` and `RELEASE_NOTES.md`.
 3. Run `npm run preflight` (must pass typecheck, tests, and the CVE/vulnerability audit).
 4. Commit the change to `main`.
 5. Tag and push:
 
 ```bash
-git tag v1.1.10
+git tag v1.1.11
 git push origin main
-git push origin v1.1.10
+git push origin v1.1.11
 ```
 
 Pushing a `v*` tag runs [.github/workflows/release.yml](.github/workflows/release.yml). That workflow runs the same preflight (including npm audit and OSV) **before** compiling the installer/portable exe and **before** publishing the GitHub Release. `npm run dist` locally does the same: it will not package if the CVE gate fails.

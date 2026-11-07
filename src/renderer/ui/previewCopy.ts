@@ -49,7 +49,7 @@ function selectionFragmentHtml(sel: Selection): string {
   const range = sel.getRangeAt(0)
   const holder = document.createElement('div')
   holder.append(range.cloneContents())
-  for (const el of holder.querySelectorAll('.hljs-ln-num')) el.remove()
+  for (const el of holder.querySelectorAll('.hljs-ln-num, .mermaid-controls')) el.remove()
   return holder.innerHTML
 }
 
@@ -76,7 +76,7 @@ function linkHrefFromTarget(root: HTMLElement, target: EventTarget | null): stri
  * fences is hidden for the read so it is not included.
  */
 function renderedPlainText(root: HTMLElement): string {
-  const nums = [...root.querySelectorAll<HTMLElement>('.hljs-ln-num')]
+  const nums = [...root.querySelectorAll<HTMLElement>('.hljs-ln-num, .mermaid-controls')]
   const previous = nums.map((el) => el.style.display)
   for (const el of nums) el.style.display = 'none'
   try {

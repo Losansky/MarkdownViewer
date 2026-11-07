@@ -574,7 +574,7 @@ function highlightMatches(
     acceptNode(node) {
       const parent = node.parentElement
       if (!parent) return NodeFilter.FILTER_REJECT
-      if (parent.closest('script, style, .mermaid, .find-highlight')) {
+      if (parent.closest('script, style, .mermaid, .mermaid-controls, .find-highlight')) {
         return NodeFilter.FILTER_REJECT
       }
       const text = node.textContent ?? ''

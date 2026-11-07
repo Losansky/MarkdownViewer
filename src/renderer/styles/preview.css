@@ -1146,11 +1146,99 @@ body {
   border: 1px solid var(--md-border);
   border-radius: 8px;
   background: var(--md-surface);
-  overflow-x: auto;
+  overflow: hidden;
   text-align: center;
 }
 
+#preview .mermaid-controls {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 8px;
+  user-select: none;
+}
+
+#preview .mermaid-control {
+  appearance: none;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--md-border);
+  border-radius: 6px;
+  background: var(--md-bg);
+  color: var(--md-fg);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+#preview .mermaid-control-text {
+  width: auto;
+  padding: 0 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+#preview .mermaid-control:hover:not(:disabled) {
+  border-color: var(--md-accent);
+  color: var(--md-accent);
+}
+
+#preview .mermaid-control:focus-visible {
+  outline: 2px solid var(--md-accent);
+  outline-offset: 1px;
+}
+
+#preview .mermaid-control:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+#preview .mermaid-zoom-label {
+  min-width: 3.25em;
+  text-align: center;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--md-muted);
+}
+
+#preview .mermaid-controls-sep {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: var(--md-border);
+}
+
+#preview .mermaid-viewport {
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+}
+
+#preview .mermaid-viewport.is-panning {
+  cursor: grabbing;
+}
+
+#preview .mermaid-stage {
+  transform-origin: center center;
+}
+
 #preview .mermaid {
+  background: transparent;
+}
+
+#preview .mermaid-viewport .mermaid {
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: none;
+  overflow: visible;
+  line-height: 0;
+  white-space: normal;
   background: transparent;
 }
 
@@ -1160,9 +1248,11 @@ body {
 
 #preview .mermaid svg {
   display: block;
-  max-width: 100%;
+  max-width: 100% !important;
   height: auto;
   margin: 0 auto;
+  -webkit-user-drag: none;
+  user-select: none;
 }
 
 /* Math */
@@ -1551,6 +1641,19 @@ body {
   #preview table {
     width: 100% !important;
     min-width: 0 !important;
+  }
+
+  #preview .mermaid-controls {
+    display: none !important;
+  }
+
+  #preview .mermaid-viewport {
+    overflow: visible !important;
+    cursor: default;
+  }
+
+  #preview .mermaid-stage {
+    transform: none !important;
   }
 
   #preview th,

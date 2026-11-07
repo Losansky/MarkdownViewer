@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.1.11 — 2026-11-07
+
+### Added
+
+- Each Mermaid diagram has buttons to zoom out, zoom in, pan left, up, down, and right, and to reset the view. Drag the diagram to pan. Hold Ctrl and scroll to zoom. Print and PDF export show the diagram at its normal size, without those buttons
+
+### Security
+
+- Electron 43.8.7. Includes the 43.8.4 File System Access blocklist fixes (macOS `/System/Volumes/Data`, `.git/hooks`, hypervisor UNC shares, malformed asar archives) and the 43.8.5–43.8.6 backports from Chromium, V8, Skia, ANGLE, libaom, libvpx, PDFium, and WebRTC
+- Mermaid 12.3.0, which depends on DOMPurify ^3.4.17 (GHSA-55q2-fjhq-7xh7, GHSA-6688-9rhm-gjv2). DOMPurify 3.4.17 is still the latest release. Mermaid's nested KaTeX stays on 0.18.10; the viewer uses KaTeX 0.19.1
+- `@electron/get` undici override raised to 7.30.2 (GHSA-mqg3-3v4r-cm32 / CVE-2026-116592, high, plus the moderate redirect-cache fixes in that release, including CVE-2026-120474 and CVE-2026-116630)
+- minimatch 11.0.5 replaces the 9.0.9 and 10.2.6 copies under electron-builder (GHSA-g3hv-75wg-m249 / CVE-2026-118764, moderate). minimatch 3.1.5 and 5.1.9 are outside that advisory
+- Rechecked 2026-11-07: npm audit and OSV report no moderate or higher vulnerabilities. Newest releases on the majors in use include Vite 6.4.5, electron-vite 3.1.0, TypeScript 5.9.3, markdown-it 14.3.3, sharp 0.35.5, highlight.js 11.12.0, and electron-builder 26.18.0. js-yaml 4.3.2, undici 6.29.1, fast-uri 3.1.9, http-cache-semantics 4.3.0, and source-map-js 1.2.2 remain the newest on those lines
+
 ## 1.1.10 — 2026-10-25
 
 ### Added

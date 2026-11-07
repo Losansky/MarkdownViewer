@@ -1,6 +1,6 @@
 {
   "name": "markdown-viewer",
-  "version": "1.1.10",
+  "version": "1.1.11",
   "description": "Windows Markdown document viewer with Mermaid and configurable presentation",
   "main": "./out/main/index.js",
   "author": "Losansky",
@@ -41,13 +41,13 @@
     "markdown-it": "^14.3.3",
     "markdown-it-multimd-table": "^4.2.3",
     "markdown-it-task-lists": "^2.1.1",
-    "mermaid": "^12.2.0"
+    "mermaid": "^12.3.0"
   },
   "devDependencies": {
     "@types/katex": "^0.16.7",
     "@types/markdown-it": "^14.2.0",
     "@types/node": "^22.20.5",
-    "electron": "^43.8.3",
+    "electron": "^43.8.7",
     "electron-builder": "^26.18.0",
     "electron-vite": "^3.0.0",
     "png-to-ico": "^3.0.1",
@@ -64,12 +64,14 @@
     "mermaid": {
       "katex": "0.18.10"
     },
+    "minimatch@9": "^11.0.1",
+    "minimatch@10": "^11.0.1",
     "@electron/get": {
-      "undici": "^7.30.1"
+      "undici": "^7.30.2"
     }
   },
   "allowScripts": {
-    "electron@43.8.3": true,
+    "electron@43.8.7": true,
     "esbuild@0.25.12": true,
     "electron-winstaller@5.4.0": true
   },

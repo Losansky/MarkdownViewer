@@ -13,6 +13,21 @@ import {
   isPreviewDocumentPath
 } from '../src/shared/markdownExtensions.ts'
 import { mermaidDocumentHtml } from '../src/renderer/markdown/formats/mermaid.ts'
+import {
+  MERMAID_PAN_MARGIN,
+  MERMAID_PAN_STEP,
+  MERMAID_ZOOM_MAX,
+  MERMAID_ZOOM_MIN,
+  applyDiagramAction,
+  clampDiagramOffset,
+  diagramActionEnabled,
+  diagramTransform,
+  diagramViewIdentity,
+  formatDiagramZoom,
+  panDiagramBy,
+  placeDiagramView,
+  zoomDiagramBy
+} from '../src/renderer/markdown/formats/mermaidPanZoom.ts'
 import { sanitizeCssColor } from '../src/shared/cssUtils.ts'
 import { slugifyHeading } from '../src/shared/headingSlug.ts'
 import { validatePresentationConfig } from '../src/main/configValidation.ts'
@@ -83,6 +98,37 @@ assert.equal(diagramHtml.includes('<script>'), false)
 assert.equal(diagramHtml.includes('&lt;script&gt;'), true)
 assert.equal(diagramHtml.includes('class="mermaid"'), true)
 assert.equal(diagramHtml.includes('mermaid-document'), true)
+
+const identity = diagramViewIdentity()
+assert.deepEqual(identity, { scale: 1, x: 0, y: 0 })
+assert.equal(formatDiagramZoom(1), '100%')
+assert.equal(formatDiagramZoom(1.25), '125%')
+assert.equal(diagramTransform(identity), 'translate(0px, 0px) scale(1)')
+const zoomed = zoomDiagramBy(identity, 1.25)
+assert.equal(zoomed.scale, 1.25)
+assert.equal(zoomed.x, 0)
+assert.equal(zoomed.y, 0)
+assert.equal(zoomDiagramBy({ scale: MERMAID_ZOOM_MAX, x: 0, y: 0 }, 2).scale, MERMAID_ZOOM_MAX)
+assert.equal(zoomDiagramBy({ scale: MERMAID_ZOOM_MIN, x: 0, y: 0 }, 0.5).scale, MERMAID_ZOOM_MIN)
+assert.equal(diagramActionEnabled({ scale: MERMAID_ZOOM_MAX, x: 0, y: 0 }, 'zoom-in'), false)
+assert.equal(diagramActionEnabled({ scale: MERMAID_ZOOM_MIN, x: 0, y: 0 }, 'zoom-out'), false)
+assert.equal(diagramActionEnabled(identity, 'zoom-in'), true)
+const panned = applyDiagramAction(identity, 'pan-left')
+assert.equal(panned.x, -MERMAID_PAN_STEP)
+assert.equal(applyDiagramAction(identity, 'pan-down').y, MERMAID_PAN_STEP)
+assert.deepEqual(applyDiagramAction(panned, 'reset'), identity)
+assert.equal(applyDiagramAction(identity, 'nope'), identity)
+assert.equal(panDiagramBy(identity, Number.NaN, 4).y, 4)
+const frame = { width: 400, height: 200 }
+assert.equal(clampDiagramOffset(0, frame.width, 1, MERMAID_PAN_MARGIN), 0)
+assert.equal(clampDiagramOffset(1000, 400, 1, 48), 352)
+assert.equal(clampDiagramOffset(-1000, 400, 1, 48), -352)
+assert.equal(clampDiagramOffset(1000, 400, 2, 48), 552)
+assert.equal(clampDiagramOffset(20, 0, 1), 20)
+const parked = placeDiagramView({ scale: 1, x: 1000, y: -1000 }, frame)
+assert.equal(parked.x, 352)
+assert.equal(parked.y, -152)
+assert.equal(diagramTransform({ scale: 1.5, x: -0.0004, y: 12.3456 }), 'translate(0px, 12.346px) scale(1.5)')
 
 assert.equal(sanitizeCssColor('#0969da'), '#0969da')
 assert.equal(sanitizeCssColor('javascript:alert(1)'), '#0969da')

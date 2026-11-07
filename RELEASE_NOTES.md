@@ -1,3 +1,14 @@
+## MarkDown Viewer 1.1.11
+
+### Added
+
+- Mermaid diagrams have pan and zoom buttons: zoom out, zoom in, pan left, up, down, and right, and reset. Drag a diagram to pan, or hold Ctrl and scroll to zoom
+
+### Security
+
+- Electron 43.8.7, Mermaid 12.3.0, DOMPurify 3.4.17, undici 7.30.2, minimatch 11.0.5 for the electron-builder copies that were on 9.x and 10.x
+- Rechecked before release: npm audit and OSV report no moderate or higher vulnerabilities
+
 ## MarkDown Viewer 1.1.10
 
 ### Added
