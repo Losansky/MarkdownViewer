@@ -17,6 +17,54 @@ function isMermaidLang(lang: string, fenceName: string): boolean {
   return lang === fenceName || MERMAID_FENCE_LANGS.has(lang)
 }
 
+const MAX_WIDTH_PX = /(?:^|;)\s*max-width:\s*([0-9]*\.?[0-9]+)px/i
+
+/**
+ * Pixel size Mermaid records for the graphic.
+ * `useMaxWidth` stores that width as `max-width` and stretches `width="100%"`.
+ * The viewBox carries the matching aspect ratio.
+ */
+export function mermaidNaturalSize(
+  style: string | null | undefined,
+  viewBox: string | null | undefined
+): { width: number; height: number } | null {
+  if (!style || !viewBox) return null
+  const maxWidth = MAX_WIDTH_PX.exec(style)
+  if (!maxWidth) return null
+  const width = Number(maxWidth[1])
+  const parts = viewBox
+    .trim()
+    .split(/[\s,]+/)
+    .map((part) => Number(part))
+  if (!Number.isFinite(width) || width <= 0 || parts.length !== 4) return null
+  if (parts.some((part) => !Number.isFinite(part))) return null
+  const boxWidth = parts[2]
+  const boxHeight = parts[3]
+  if (boxWidth <= 0 || boxHeight <= 0) return null
+  return { width, height: (width * boxHeight) / boxWidth }
+}
+
+/** Keep the SVG at Mermaid's natural size. CSS `max-width: 100%` still shrinks it. */
+export function applyMermaidNaturalSize(root: ParentNode): void {
+  root.querySelectorAll<SVGElement>('.mermaid svg').forEach((svg) => {
+    const size = mermaidNaturalSize(svg.getAttribute('style'), svg.getAttribute('viewBox'))
+    if (!size) return
+    const width = formatSvgPx(size.width)
+    const height = formatSvgPx(size.height)
+    svg.setAttribute('width', width)
+    svg.setAttribute('height', height)
+    svg.style.width = `${width}px`
+    svg.style.maxWidth = '100%'
+    svg.style.height = 'auto'
+  })
+}
+
+function formatSvgPx(value: number): string {
+  const rounded = Math.round(value * 100) / 100
+  if (Object.is(rounded, -0)) return '0'
+  return String(rounded)
+}
+
 function diagramLineEnd(source: string): number {
   if (!source) return 1
   let n = 1
@@ -112,6 +160,9 @@ export async function renderMermaidDiagrams(
       errors.push(text.slice(0, 200))
     }
   })
+
+  // Width 100% would grow a narrow diagram to the preview pane and scale its height with it.
+  applyMermaidNaturalSize(root)
 
   return errors
 }

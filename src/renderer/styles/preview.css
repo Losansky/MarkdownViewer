@@ -1038,8 +1038,45 @@ body {
   width: 100%;
   max-width: 100%;
   margin: 0 0 1em;
+}
+
+#preview .table-scroll-top,
+#preview .table-scroll-body {
+  max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
+  scrollbar-color: var(--md-muted) transparent;
+  scrollbar-width: thin;
+}
+
+#preview .table-scroll-top {
+  height: 12px;
+  margin: 0 0 4px;
+  user-select: none;
+}
+
+#preview .table-scroll-top[hidden] {
+  display: none;
+}
+
+#preview .table-scroll-spacer {
+  height: 1px;
+}
+
+#preview .table-scroll-top::-webkit-scrollbar,
+#preview .table-scroll-body::-webkit-scrollbar {
+  height: 12px;
+}
+
+#preview .table-scroll-top::-webkit-scrollbar-thumb,
+#preview .table-scroll-body::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--md-muted) 65%, var(--md-border));
+  border-radius: 6px;
+}
+
+#preview .table-scroll-top::-webkit-scrollbar-track,
+#preview .table-scroll-body::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 #preview table {
@@ -1141,7 +1178,10 @@ body {
 
 /* Mermaid */
 #preview .mermaid-wrap {
-  margin: 0 0 1.25em;
+  box-sizing: border-box;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto 1.25em;
   padding: 12px;
   border: 1px solid var(--md-border);
   border-radius: 8px;
@@ -1152,6 +1192,7 @@ body {
 
 #preview .mermaid-controls {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
   gap: 4px;
@@ -1214,6 +1255,9 @@ body {
 }
 
 #preview .mermaid-viewport {
+  width: max-content;
+  max-width: 100%;
+  margin-inline: auto;
   overflow: hidden;
   cursor: grab;
   touch-action: none;
@@ -1224,6 +1268,8 @@ body {
 }
 
 #preview .mermaid-stage {
+  width: max-content;
+  max-width: 100%;
   transform-origin: center center;
 }
 
@@ -1243,12 +1289,13 @@ body {
 }
 
 #preview .mermaid-document {
-  margin: 0;
+  margin: 0 auto;
 }
 
 #preview .mermaid svg {
   display: block;
-  max-width: 100% !important;
+  width: auto;
+  max-width: 100%;
   height: auto;
   margin: 0 auto;
   -webkit-user-drag: none;
@@ -1636,6 +1683,14 @@ body {
   #preview .table-wrap {
     overflow: visible !important;
     width: auto !important;
+  }
+
+  #preview .table-scroll-top {
+    display: none !important;
+  }
+
+  #preview .table-scroll-body {
+    overflow: visible !important;
   }
 
   #preview table {

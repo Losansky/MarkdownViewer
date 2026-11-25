@@ -139,10 +139,15 @@ function applyTableWrap(md: MarkdownIt): void {
     const attr =
       (line ? ` data-source-line="${md.utils.escapeHtml(line)}"` : '') +
       (end ? ` data-source-line-end="${md.utils.escapeHtml(end)}"` : '')
-    return `<div class="table-wrap"${attr}>${open(tokens, idx, options, env, self)}`
+    return (
+      `<div class="table-wrap"${attr}>` +
+      `<div class="table-scroll-top" hidden aria-hidden="true" tabindex="-1">` +
+      `<div class="table-scroll-spacer"></div></div>` +
+      `<div class="table-scroll-body">${open(tokens, idx, options, env, self)}`
+    )
   }
   md.renderer.rules.table_close = (tokens, idx, options, env, self) => {
-    return `${close(tokens, idx, options, env, self)}</div>\n`
+    return `${close(tokens, idx, options, env, self)}</div></div>\n`
   }
 }
 

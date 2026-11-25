@@ -4,6 +4,7 @@ import { isMermaidDiagramPath } from '../../shared/markdownExtensions'
 import { createPipeline } from '../markdown/createPipeline'
 import { mermaidDocumentHtml, renderMermaidDiagrams } from '../markdown/formats/mermaid'
 import { attachMermaidPanZoom } from '../markdown/formats/mermaidPanZoom'
+import { attachTableScrollbars, clearTableScrollbars } from './tableScroll'
 import { highlightThemeHref } from '../markdown/formats/codeHighlight'
 import { LineGutterController } from './lineGutter'
 import { buildPreviewCopyPayload, selectedFieldText } from './previewCopy'
@@ -263,6 +264,7 @@ export class PreviewController {
         ? mermaidDocumentHtml(source)
         : this.pipeline.render(source, { documentPath: this.path }).html
       if (token !== this.renderToken) return
+      clearTableScrollbars()
       this.previewEl.innerHTML = html
 
       const mermaidConfig = resolveMermaidConfig(this.config)
@@ -272,6 +274,7 @@ export class PreviewController {
       )
       if (token !== this.renderToken) return
       attachMermaidPanZoom(this.previewEl)
+      attachTableScrollbars(this.previewEl)
       if (mermaidErrors.length > 0) {
         this.showError(`Mermaid: ${mermaidErrors[0]}`)
       }

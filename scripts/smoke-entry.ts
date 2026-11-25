@@ -39,7 +39,16 @@ const firstBodyCells = (currencyRows[1]?.match(/<td[\s>]/g) ?? []).length
 
 const checks: Array<[string, boolean]> = [
   ['table', /<table[\s>]/i.test(html)],
-  ['table wrap', /class="table-wrap"/.test(html) && /<div[^>]*table-wrap[\s\S]*?<table[\s>]/.test(html)],
+  [
+    'table wrap',
+    /class="table-wrap"/.test(html) && /<div[^>]*table-wrap[\s\S]*?<table[\s>]/.test(html)
+  ],
+  [
+    'table scrollbars',
+    /class="table-scroll-top"/.test(html) &&
+      /class="table-scroll-body"/.test(html) &&
+      /class="table-scroll-spacer"/.test(html)
+  ],
   ['demo currency keeps dollar text', html.includes('$1,202.50') && html.includes('$48.10')],
   ['demo currency not math-error', !html.includes('math-error')],
   ['demo currency heading after table', /<h3[^>]*>After currency table<\/h3>/i.test(html)],

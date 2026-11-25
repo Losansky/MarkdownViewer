@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.1.12 — 2026-11-25
+
+### Fixed
+
+- Mermaid diagrams open at their natural size. The class diagram in `samples/demo.md` keeps the graphic's own width and height on first view
+
+### Changed
+
+- A wide table shows a horizontal scrollbar above and below the table
+
+### Security
+
+- Electron 43.8.13. Includes the 43.8.8 fix for renderer crashes caused by unbounded `webRequest` redirect loops, the 43.8.9 distrust of eMudhra's revoked RSA intermediates, and the 43.8.8–43.8.12 backports from Chromium, V8, Skia, ANGLE, Dawn, FFmpeg, PDFium, and WebRTC. This Electron build uses Node.js 24.22.3
+- Vite 6.4.6 (GHSA-p4f5-76q4-ffq7, critical). The dev server could run code from a crafted request when it was reachable on the network. Vite 6.4.5 and older 6.x releases are affected
+- DOMPurify 3.5.0, including the 3.4.18 and 3.5.0 `SAFE_FOR_TEMPLATES` fixes. Mermaid stays on 12.3.0 and its nested KaTeX stays on 0.18.10. The viewer uses KaTeX 0.19.1
+- minimatch 11.0.9 replaces the overridden 9.x and 10.x copies under electron-builder. minimatch 3.1.5 and 5.1.9 stay on those lines
+- source-map-js 1.2.4
+- Rechecked 2026-11-25: npm audit and OSV report no moderate or higher vulnerabilities. Newest releases on the majors in use include Electron 43.8.13, Vite 6.4.6, electron-vite 3.1.0, TypeScript 5.9.3, markdown-it 14.3.3, sharp 0.35.5, highlight.js 11.12.0, electron-builder 26.18.0, Mermaid 12.3.0, and DOMPurify 3.5.0. js-yaml 4.3.2, undici 6.29.1 and 7.30.2, fast-uri 3.1.9, and http-cache-semantics 4.3.0 remain the newest on those lines. Electron 45, Vite 8, electron-vite 6, TypeScript 7, markdown-it 15, js-yaml 5, and fast-uri 4 were not required for a published fix
+
 ## 1.1.11 — 2026-11-07
 
 ### Added

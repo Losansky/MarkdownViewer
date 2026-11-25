@@ -12,7 +12,7 @@ import {
   isMermaidDiagramPath,
   isPreviewDocumentPath
 } from '../src/shared/markdownExtensions.ts'
-import { mermaidDocumentHtml } from '../src/renderer/markdown/formats/mermaid.ts'
+import { mermaidDocumentHtml, mermaidNaturalSize } from '../src/renderer/markdown/formats/mermaid.ts'
 import {
   MERMAID_PAN_MARGIN,
   MERMAID_PAN_STEP,
@@ -98,6 +98,17 @@ assert.equal(diagramHtml.includes('<script>'), false)
 assert.equal(diagramHtml.includes('&lt;script&gt;'), true)
 assert.equal(diagramHtml.includes('class="mermaid"'), true)
 assert.equal(diagramHtml.includes('mermaid-document'), true)
+
+const classSize = mermaidNaturalSize(
+  'max-width: 262.05731201171875px;',
+  '4.000007629394531 4 262.05731201171875 420'
+)
+assert.ok(classSize)
+assert.equal(classSize.width, 262.05731201171875)
+assert.equal(classSize.height, 420)
+assert.equal(mermaidNaturalSize(null, '0 0 10 10'), null)
+assert.equal(mermaidNaturalSize('max-width: 100%;', '0 0 10 10'), null)
+assert.equal(mermaidNaturalSize('max-width: 80px;', '0 0 0 10'), null)
 
 const identity = diagramViewIdentity()
 assert.deepEqual(identity, { scale: 1, x: 0, y: 0 })

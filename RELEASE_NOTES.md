@@ -1,3 +1,18 @@
+## MarkDown Viewer 1.1.12
+
+### Fixed
+
+- Mermaid diagrams open at the graphic's own size. The class diagram in the demo keeps that size on first view
+
+### Changed
+
+- A wide table shows a horizontal scrollbar above and below the table
+
+### Security
+
+- Electron 43.8.13, Vite 6.4.6 (GHSA-p4f5-76q4-ffq7), DOMPurify 3.5.0, minimatch 11.0.9, source-map-js 1.2.4
+- Rechecked before release: npm audit and OSV report no moderate or higher vulnerabilities
+
 ## MarkDown Viewer 1.1.11
 
 ### Added
